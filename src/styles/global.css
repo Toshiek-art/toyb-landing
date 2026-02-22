@@ -1,0 +1,35 @@
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f4f7f8;
+  color: #1f2933;
+}
+
+.container {
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 2rem 1.25rem;
+}
+
+.hero {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  padding: 2rem;
+}
+
+.hero h1 {
+  margin: 0;
+}
+
+.hero p {
+  margin: 0.75rem 0 0;
+}

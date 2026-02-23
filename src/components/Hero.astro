@@ -1,13 +1,36 @@
 ---
 interface Props {
-  heading: string;
-  subheading?: string;
+  subtitle?: string;
+  ctaPrimary?: { label: string; href: string };
+  ctaSecondary?: { label: string; href: string };
 }
 
-const { heading, subheading } = Astro.props;
+const {
+  subtitle = "Toyb is a modular worldbuilding engine for creators who think in systems.",
+  ctaPrimary = { label: "Get early access", href: "#preview" },
+  ctaSecondary = { label: "See how it works", href: "#why-toyb" },
+} = Astro.props;
 ---
 
-<section class="hero">
-  <h1>{heading}</h1>
-  {subheading && <p>{subheading}</p>}
+<section class="hero" aria-labelledby="hero-title" data-reveal>
+  <h1 id="hero-title" class="hero-title">
+    Build universes.
+    <span class="hero-nowrap">
+      <span class="hero-accent" data-text="Break">Break</span>
+      complexity.
+    </span>
+  </h1>
+  <p class="hero-subtitle">{subtitle}</p>
+  <div class="hero-actions" aria-label="Hero call to actions">
+    <a
+      class="button button-primary"
+      href={ctaPrimary.href}
+      data-track="cta_hero_primary"
+    >
+      {ctaPrimary.label}
+    </a>
+    <a class="button" href={ctaSecondary.href} data-track="cta_hero_secondary">
+      {ctaSecondary.label}
+    </a>
+  </div>
 </section>

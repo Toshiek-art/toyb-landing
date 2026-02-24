@@ -98,6 +98,13 @@ const isAllowedOrigin = (origin: string): boolean => {
 const getAllowedOrigin = (request: Request): string | null => {
   const origin = cleanString(request.headers.get("origin"));
   if (!origin) return null;
+  // Allow strict same-origin requests (useful for local development hosts).
+  try {
+    const requestOrigin = new URL(request.url).origin;
+    if (origin === requestOrigin) return origin;
+  } catch {
+    // fall through
+  }
   return isAllowedOrigin(origin) ? origin : null;
 };
 
@@ -324,6 +331,7 @@ export const ALL: APIRoute = async ({ request }) => {
 
 export const POST: APIRoute = async (context) => {
   const request = context.request;
+  const env = getRuntimeEnv(context);
 
   // Missing Origin is rejected by design to reduce CSRF/cross-site abuse surface.
   const allowedOrigin = getAllowedOrigin(request);
@@ -352,7 +360,6 @@ export const POST: APIRoute = async (context) => {
     }
   }
 
-  const env = getRuntimeEnv(context);
   const supabaseUrl = cleanString(env.SUPABASE_URL);
   const supabaseAnonKey = cleanString(env.SUPABASE_ANON_KEY);
   if (!supabaseUrl || !supabaseAnonKey) {

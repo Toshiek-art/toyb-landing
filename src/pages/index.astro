@@ -192,10 +192,7 @@ const creatorBullets = [
               error?: string;
             } | null;
             if (!response.ok || !result) {
-              if (result?.error === "bot_suspected") {
-                throw new Error("bot_suspected");
-              }
-              throw new Error(`waitlist_${response.status}`);
+              throw new Error(result?.error ?? `waitlist_${response.status}`);
             }
             return result as {
               ok: boolean;
@@ -220,10 +217,31 @@ const creatorBullets = [
             form.reset();
           })
           .catch((error) => {
-            feedback.textContent =
-              error instanceof Error && error.message === "bot_suspected"
-                ? "Verification failed. Try again."
-                : "Something went wrong. Try again.";
+            const message =
+              error instanceof Error ? error.message : "unknown_error";
+            if (message === "bot_suspected") {
+              feedback.textContent = "Verification failed. Try again.";
+              return;
+            }
+            if (message === "forbidden_origin") {
+              feedback.textContent =
+                "This origin is not allowed for submissions.";
+              return;
+            }
+            if (message === "invalid_request") {
+              feedback.textContent = "Please check the email and try again.";
+              return;
+            }
+            if (message === "rate_limited") {
+              feedback.textContent = "Too many attempts. Try again later.";
+              return;
+            }
+            if (message === "server_error") {
+              feedback.textContent =
+                "Service is temporarily unavailable. Try again shortly.";
+              return;
+            }
+            feedback.textContent = "Something went wrong. Try again.";
           })
           .finally(() => {
             submitButton.disabled = false;

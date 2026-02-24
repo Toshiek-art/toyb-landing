@@ -1,43 +1,267 @@
-# Astro Starter Kit: Minimal
+# Toyb Website
 
-```sh
-npm create astro@latest -- --template minimal
+[![CI](https://github.com/tosiek/toyb/actions/workflows/ci.yml/badge.svg)](https://github.com/tosiek/toyb/actions/workflows/ci.yml)
+
+Astro-based marketing and policy site for **Toyb**, with an accessibility-first baseline, CI quality checks, and Cloudflare Pages deployment.
+
+## Stack
+
+- Astro + TypeScript
+- ESLint + Prettier
+- @astrojs/sitemap
+- Playwright + axe-core accessibility checks
+- GitHub Actions CI/CD
+
+## Quick start
+
+```bash
+npm install
+npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Commands
 
-## 🚀 Project Structure
+| Command             | Purpose                                   |
+| ------------------- | ----------------------------------------- |
+| `npm run dev`       | Start local development server            |
+| `npm run lint`      | Run ESLint                                |
+| `npm run format`    | Check formatting (fails if not compliant) |
+| `npm run typecheck` | Run TypeScript typecheck                  |
+| `npm run check`     | Run typecheck + `astro check`             |
+| `npm run build`     | Build static output into `dist/`          |
+| `npm run test:a11y` | Run axe-core checks on built pages        |
+| `npm run deploy`    | One-command Cloudflare Pages deploy       |
 
-Inside of your Astro project, you'll see the following folders and files:
+## Waitlist backend
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+- API route: `POST /api/waitlist`
+- Stores emails in Supabase table `waitlist`
+- Uses Supabase RPC + RLS with `SUPABASE_ANON_KEY` (no service-role key in app runtime)
+- Sends welcome email via Resend (default, HTTP API; Cloudflare-compatible)
+- Optional SMTP fallback for local/dev Node runtime only
+
+Setup details:
+
+- `docs/waitlist.md`
+- `docs/landing-techdoc.md`
+- `.env.example`
+
+Quick smoke test (API waitlist):
+
+```bash
+node scripts/test-waitlist.mjs
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Logo wordmark (`toyb`)
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Il wordmark è implementato come componente riusabile in `src/components/Logo.astro`, con 2 varianti:
 
-Any static assets, like images, can be placed in the `public/` directory.
+- `slice` (default): micro-frattura diagonale sulla lettera `b`
+- `bar`: separatore integrato `toy|b`
 
-## 🧞 Commands
+Props supportate:
 
-All commands are run from the root of the project, from a terminal:
+- `variant`: `"slice" | "bar"` (default: `"slice"`)
+- `size`: `"sm" | "md" | "lg"` (default: `"md"`)
+- `asLink`: `boolean` (default: `true`, link a `/`)
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+### Markup usato
 
-## 👀 Want to learn more?
+```astro
+---
+interface Props {
+  variant?: "slice" | "bar";
+  size?: "sm" | "md" | "lg";
+  asLink?: boolean;
+}
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+const { variant = "slice", size = "md", asLink = true } = Astro.props as Props;
+const classes = `logo logo--${variant} logo--${size}`;
+---
+
+{
+  asLink ? (
+    <a href="/" class={classes} aria-label="toyb home">
+      <>
+        <span class="logo__t">toy</span>
+        <span class="logo__b">b</span>
+      </>
+    </a>
+  ) : (
+    <span class={classes} role="img" aria-label="toyb">
+      <>
+        <span class="logo__t">toy</span>
+        <span class="logo__b">b</span>
+      </>
+    </span>
+  )
+}
+```
+
+### CSS principale usato
+
+```css
+.logo {
+  --logo-size: 1.3125rem;
+  --logo-cut-thickness: 0.075em;
+  --logo-cut-color: var(--bg);
+  --logo-slice-angle: -20deg;
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-heading);
+  font-size: var(--logo-size);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: lowercase;
+  color: var(--text);
+}
+
+.logo--sm {
+  --logo-size: 1rem;
+}
+.logo--md {
+  --logo-size: 1.3125rem;
+}
+.logo--lg {
+  --logo-size: 1.875rem;
+}
+
+.logo--slice .logo__b::before {
+  content: "";
+  position: absolute;
+  width: 0.92em;
+  height: var(--logo-cut-thickness);
+  background: var(--logo-cut-color);
+  transform: rotate(var(--logo-slice-angle));
+}
+
+.logo--slice .logo__b::after {
+  content: "";
+  position: absolute;
+  width: 0.74em;
+  background: var(--accent);
+  opacity: 0.24;
+  transform: rotate(var(--logo-slice-angle));
+}
+
+.logo--bar .logo__t::after {
+  content: "";
+  position: absolute;
+  width: 1px;
+  height: 0.74em;
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
+  opacity: 0.85;
+}
+```
+
+### Dove si cambia la variante
+
+Nel navbar (`src/components/Navbar.astro`):
+
+```astro
+<Logo variant="slice" size="md" asLink />
+```
+
+Per testare A/B visivamente:
+
+- pagina laboratorio: `/logo-lab`
+- file: `src/pages/logo-lab.astro`
+
+## Accessibility baseline
+
+The project follows a practical baseline aligned with:
+
+- EN 301 549 (reference baseline)
+- WCAG 2.1 A/AA (automated rule tags via axe-core)
+
+This reference is implementation guidance only and **not a legal compliance claim**.
+
+### Run accessibility tests locally
+
+1. Build the site:
+
+```bash
+npm run build
+```
+
+2. Install Playwright Chromium (first run only):
+
+```bash
+npx playwright install chromium
+```
+
+3. Run checks:
+
+```bash
+npm run test:a11y
+```
+
+## Consent banner (feature-flagged)
+
+`src/components/ConsentBanner.astro` is included but **disabled by default**.
+
+Enable it only when you add non-essential scripts/cookies:
+
+```bash
+PUBLIC_ENABLE_CONSENT_BANNER=true npm run dev
+```
+
+Behavior:
+
+- Does not set optional cookies by default.
+- Stores user consent choice (`accepted` / `rejected`) in local storage.
+- Shows equal-weight **Reject** and **Accept** actions.
+- Links to `/cookies` policy page.
+
+## SEO and metadata
+
+Implemented baseline:
+
+- Canonical site URL: `https://toyb.space/`
+- Meta description and OG tags in shared layout
+- JSON-LD `SoftwareApplication` for Toyb
+- Auto-generated sitemap via `@astrojs/sitemap`
+- Generated `robots.txt` endpoint
+
+## CI
+
+Workflow: `.github/workflows/ci.yml`
+
+Runs on push and pull request:
+
+1. `npm ci`
+2. `npm run lint`
+3. `npm run format` (format check, fails on mismatch)
+4. `npm run typecheck`
+5. `npm run build`
+6. `npx playwright install --with-deps chromium`
+7. `npm run test:a11y`
+
+## Deploy to Cloudflare Pages
+
+Workflow: `.github/workflows/deploy.yml`
+
+### Required GitHub secrets
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+### Required GitHub variable
+
+- `CLOUDFLARE_PAGES_PROJECT` (example: `toyb`)
+
+### Domain setup (`toyb.space`)
+
+In Cloudflare Pages project settings:
+
+1. Add custom domain `toyb.space`.
+2. Configure DNS records in Cloudflare.
+3. Ensure HTTPS is active.
+
+### Local one-command deploy
+
+```bash
+CLOUDFLARE_PAGES_PROJECT=toyb npm run deploy
+```
+
+This command builds the site and runs `wrangler pages deploy dist`.

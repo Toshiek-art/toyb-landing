@@ -1,26 +1,123 @@
 ---
+import ConsentBanner from "../components/ConsentBanner.astro";
+import Footer from "../components/Footer.astro";
+import Navbar from "../components/Navbar.astro";
 import "../styles/global.css";
 
 interface Props {
   title?: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  lang?: "en" | "it";
 }
 
-const { title = "Toyb Astro Starter" } = Astro.props;
+const {
+  title = "toyb | Build universes. Break complexity.",
+  description = "Toyb is a modular worldbuilding engine for creators who think in systems.",
+  canonical,
+  ogImage = "/favicon.svg",
+  lang = "en",
+} = Astro.props;
+
+const siteOrigin = Astro.site?.toString() ?? "https://toyb.space/";
+const canonicalUrl =
+  canonical ?? new URL(Astro.url.pathname, siteOrigin).toString();
+const ogImageUrl = new URL(ogImage, siteOrigin).toString();
+
+const softwareApplicationLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Toyb",
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "Web",
+  url: "https://toyb.space/",
+  description,
+};
+
+const enableConsentBanner =
+  import.meta.env.PUBLIC_ENABLE_CONSENT_BANNER === "true";
 ---
 
 <!doctype html>
-<html lang="it">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="toyb" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <script
+      type="application/ld+json"
+      is:inline
+      set:html={JSON.stringify(softwareApplicationLd)}
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
     <title>{title}</title>
   </head>
-  <body>
-    <main class="container">
+
+  <body class="theme-toyb">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <Navbar />
+    </header>
+
+    <main id="main-content" class="site-main layout-shell" tabindex="-1">
       <slot />
     </main>
+
+    <Footer />
+    {enableConsentBanner && <ConsentBanner />}
+
+    <script>
+      import { track } from "../lib/analytics";
+
+      const reducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      const revealTargets = document.querySelectorAll("[data-reveal]");
+
+      if (!reducedMotion && "IntersectionObserver" in window) {
+        document.documentElement.classList.add("reveal-enabled");
+        const observer = new IntersectionObserver(
+          (entries, source) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              entry.target.classList.add("is-visible");
+              source.unobserve(entry.target);
+            });
+          },
+          { threshold: 0.2 },
+        );
+
+        revealTargets.forEach((target) => observer.observe(target));
+      } else {
+        revealTargets.forEach((target) => target.classList.add("is-visible"));
+      }
+
+      document.querySelectorAll("[data-track]").forEach((element) => {
+        element.addEventListener("click", () => {
+          const eventName = element.getAttribute("data-track");
+          if (!eventName) return;
+          track(eventName, { path: window.location.pathname, beta: true });
+        });
+      });
+    </script>
   </body>
 </html>

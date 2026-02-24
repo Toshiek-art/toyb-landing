@@ -1,0 +1,30 @@
+---
+interface Props {
+  variant?: "slice" | "bar";
+  size?: "sm" | "md" | "lg";
+  asLink?: boolean;
+}
+
+const { variant = "slice", size = "md", asLink = true } = Astro.props as Props;
+
+const classes = `logo logo--${variant} logo--${size}`;
+const ariaLabel = "toyb home";
+---
+
+{
+  asLink ? (
+    <a href="/" class={classes} aria-label={ariaLabel}>
+      <>
+        <span class="logo__t">toy</span>
+        <span class="logo__b">b</span>
+      </>
+    </a>
+  ) : (
+    <span class={classes} role="img" aria-label="toyb">
+      <>
+        <span class="logo__t">toy</span>
+        <span class="logo__b">b</span>
+      </>
+    </span>
+  )
+}

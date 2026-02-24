@@ -1,5 +1,15 @@
 // @ts-check
+import cloudflare from "@astrojs/cloudflare";
+import sitemap from "@astrojs/sitemap";
 import { defineConfig } from "astro/config";
 
 // https://astro.build/config
-export default defineConfig({});
+export default defineConfig({
+  site: "https://toyb.space/",
+  output: "server",
+  adapter: cloudflare(),
+  session: {
+    driver: "memory",
+  },
+  integrations: [sitemap()],
+});

@@ -1,0 +1,35 @@
+---
+import Logo from "./Logo.astro";
+
+const links = [
+  { href: "#why-toyb", label: "Why Toyb" },
+  { href: "#creators", label: "Built for creators" },
+  { href: "#preview", label: "Preview" },
+];
+---
+
+<div class="navbar layout-shell" data-reveal>
+  <Logo variant="slice" size="md" asLink />
+
+  <nav aria-label="Primary">
+    <ul class="nav-links">
+      {
+        links.map((link) => (
+          <li>
+            <a class="nav-link" href={link.href}>
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
+  <a
+    class="button button-primary"
+    href="#preview"
+    data-track="cta_nav_early_access"
+  >
+    Get early access
+  </a>
+</div>

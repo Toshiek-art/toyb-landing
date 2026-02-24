@@ -1,0 +1,23 @@
+---
+interface Item {
+  title: string;
+  text: string;
+}
+
+interface Props {
+  items: Item[];
+}
+
+const { items } = Astro.props;
+---
+
+<div class="feature-grid">
+  {
+    items.map((item) => (
+      <article class="feature-card" data-reveal>
+        <h3>{item.title}</h3>
+        <p>{item.text}</p>
+      </article>
+    ))
+  }
+</div>

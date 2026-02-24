@@ -1,0 +1,74 @@
+:root {
+  /* TODO: If Space Grotesk and Inter are added locally, declare @font-face in this file. */
+  --font-heading:
+    "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --bg: #0b0f14;
+  --surface: #111826;
+  --text: #eaf0ff;
+  --muted: #a7b0c0;
+  --border: rgb(255 255 255 / 0.08);
+  --accent: #00e5ff;
+  --focus: var(--accent);
+
+  /* Alternate accent (inactive): #FF2E8B */
+
+  --ink-on-accent: #03151b;
+  --overlay-soft: rgb(255 255 255 / 0.035);
+  --overlay-grid: rgb(255 255 255 / 0.03);
+  --accent-fade: rgb(0 229 255 / 0.14);
+  --accent-border: rgb(0 229 255 / 0.35);
+  --accent-border-soft: rgb(0 229 255 / 0.22);
+  --accent-glow-soft: rgb(0 229 255 / 0.08);
+  --accent-glow-hero: rgb(0 229 255 / 0.12);
+  --hero-rim: rgb(255 255 255 / 0.06);
+  --hero-soft-shine: rgb(255 255 255 / 0.03);
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: clamp(2.1rem, 5vw, 4.4rem);
+
+  --line-tight: 1.08;
+  --line-body: 1.65;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.9rem;
+  --radius-lg: 1.35rem;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 8px 24px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 14px 36px rgb(0 0 0 / 0.24);
+  --shadow-glow: 0 0 24px var(--accent-glow-soft);
+
+  --blur-surface: 8px;
+  --max-width: 72rem;
+
+  /* Backward aliases (to avoid regressions in untouched styles) */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-focus: var(--focus);
+}
+
+.theme-toyb {
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--text);
+}

@@ -1,0 +1,69 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+export const prerender = true;
+---
+
+<BaseLayout
+  title="Accessibility Statement | Toyb"
+  description="Accessibility statement placeholder for Toyb, including scope, measures, and feedback contact."
+>
+  <article class="legal-page">
+    <h1>Accessibility Statement</h1>
+    <p>
+      This statement describes the current accessibility baseline and
+      improvement process. It is a practical implementation note, not a legal
+      certification.
+    </p>
+
+    <h2>Scope</h2>
+    <ul>
+      <li>
+        This statement covers the public website and pages under the toyb.space
+        domain.
+      </li>
+      <li>
+        Third-party tools embedded from external vendors may have separate
+        accessibility coverage.
+      </li>
+    </ul>
+
+    <h2>Accessibility Measures</h2>
+    <ul>
+      <li>
+        Semantic HTML structure with landmarks, headings, and readable link
+        text.
+      </li>
+      <li>Keyboard focus visibility and skip-link support for navigation.</li>
+      <li>Color choices and contrast-aware styles for improved readability.</li>
+      <li>
+        Reduced-motion support for users with motion sensitivity preferences.
+      </li>
+      <li>Automated accessibility checks in CI using axe-core.</li>
+    </ul>
+
+    <h2>Feedback Contact</h2>
+    <p>
+      If you encounter barriers, report them to
+      <a href="mailto:accessibility@toyb.space">accessibility@toyb.space</a> with
+      page URL, device, browser, and a short description of the issue.
+    </p>
+
+    <h2>Compatibility and Limitations</h2>
+    <ul>
+      <li>
+        Latest versions of major browsers and assistive technologies are the
+        primary target baseline.
+      </li>
+      <li>
+        Some components may require iterative fixes as new content is added.
+      </li>
+    </ul>
+
+    <h2>Review Cycle</h2>
+    <p>
+      Accessibility checks should run in CI for every change set, with periodic
+      manual keyboard and screen-reader verification.
+    </p>
+  </article>
+</BaseLayout>

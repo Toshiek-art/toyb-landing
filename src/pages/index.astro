@@ -1,11 +1,243 @@
 ---
+import FeatureGrid from "../components/FeatureGrid.astro";
 import Hero from "../components/Hero.astro";
+import Section from "../components/Section.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+
+export const prerender = true;
+const waitlistTurnstileEnabled =
+  import.meta.env.WAITLIST_TURNSTILE_ENABLED === "true";
+const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY ?? "";
+
+const whyItems = [
+  {
+    title: "Projects as universes",
+    text: "Model creative work as interconnected systems instead of isolated files and folders.",
+  },
+  {
+    title: "Narrative graph & timeline",
+    text: "Track relationships, chronology, and dependencies without losing clarity.",
+  },
+  {
+    title: "AI-assisted coherence checks",
+    text: "Surface contradictions early while preserving author intent and stylistic control.",
+  },
+];
+
+const creatorBullets = [
+  "Structure lore, scenes, and entities in one deliberate workspace.",
+  "Use modular building blocks for worlds that evolve over time.",
+  "Keep constraints visible so creativity scales without chaos.",
+];
 ---
 
-<BaseLayout title="Toyb Astro Scaffold">
-  <Hero
-    heading="Progetto Astro pronto"
-    subheading="Template iniziale con TypeScript, ESLint e Prettier."
-  />
+<BaseLayout
+  title="toyb | Build universes. Break complexity."
+  description="Toyb is a modular worldbuilding engine for creators who think in systems."
+  canonical="https://toyb.space/"
+>
+  <Hero />
+
+  <section class="founder-note" aria-label="Founder note" data-reveal>
+    <p class="founder-note__text">
+      Toyb was built out of frustration with tools that treat worlds like
+      folders. I wanted something that thinks in systems. If you build in
+      systems too, you'll feel at home here.
+    </p>
+  </section>
+
+  <section class="waitlist" aria-labelledby="waitlist-title" data-reveal>
+    <h2 id="waitlist-title">Join the first system builders.</h2>
+    <p class="waitlist__sub">
+      Early members get direct access, private feedback channel, and lifetime
+      beta perks.
+    </p>
+    <form class="waitlist__form" data-waitlist-form>
+      <label class="sr-only" for="waitlist-email">Email address</label>
+      <input
+        id="waitlist-email"
+        class="waitlist__input"
+        name="email"
+        type="email"
+        autocomplete="email"
+        placeholder="Your email"
+        required
+      />
+      <div class="waitlist__honeypot" aria-hidden="true">
+        <label for="waitlist-company">Company</label>
+        <input
+          id="waitlist-company"
+          name="company"
+          type="text"
+          tabindex="-1"
+          autocomplete="off"
+        />
+      </div>
+      {
+        waitlistTurnstileEnabled && (
+          <div class="waitlist__turnstile">
+            <div class="cf-turnstile" data-sitekey={turnstileSiteKey} />
+          </div>
+        )
+      }
+      <button class="button button-primary waitlist__button" type="submit">
+        Request early access
+      </button>
+    </form>
+    <p class="waitlist__feedback" aria-live="polite" data-waitlist-feedback></p>
+  </section>
+
+  <Section
+    id="why-toyb"
+    title="Why Toyb"
+    subtitle="A calm interface for complex creative systems. Minimal surface, maximum control."
+  >
+    <FeatureGrid items={whyItems} />
+  </Section>
+
+  <Section
+    id="creators"
+    title="Built for creators"
+    subtitle="For writers, worldbuilders, design leads, and narrative teams shipping coherent universes."
+  >
+    <div class="creators-grid">
+      <ul class="bullets">
+        {creatorBullets.map((bullet) => <li>{bullet}</li>)}
+      </ul>
+      <aside class="micro-visual" aria-label="System visualization placeholder">
+      </aside>
+    </div>
+  </Section>
+
+  <Section
+    id="preview"
+    title="Preview"
+    subtitle="A focused canvas for narrative systems, timelines, and coherence checkpoints."
+  >
+    <article class="preview-card">
+      <div
+        class="preview-frame"
+        role="img"
+        aria-label="Product preview placeholder"
+      >
+      </div>
+      <p>
+        This placeholder represents the upcoming product interface preview.
+        Replace it with a real screenshot or interactive demo as soon as assets
+        are available.
+      </p>
+      <div class="hero-actions" aria-label="Preview actions">
+        <a
+          class="button button-primary"
+          href="/imprint"
+          data-track="cta_preview_access">Get early access</a
+        >
+        <a class="button" href="#why-toyb" data-track="cta_preview_learn"
+          >See how it works</a
+        >
+      </div>
+    </article>
+  </Section>
+
+  <script>
+    import { track } from "../lib/analytics";
+
+    const form = document.querySelector("[data-waitlist-form]");
+    const feedback = document.querySelector("[data-waitlist-feedback]");
+
+    if (form instanceof HTMLFormElement && feedback instanceof HTMLElement) {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const emailField = form.elements.namedItem("email");
+        const companyField = form.elements.namedItem("company");
+        const turnstileField = form.querySelector(
+          'input[name="cf-turnstile-response"]',
+        );
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (!(emailField instanceof HTMLInputElement)) return;
+        if (!(companyField instanceof HTMLInputElement)) return;
+        if (!(submitButton instanceof HTMLButtonElement)) return;
+        const turnstileToken =
+          turnstileField instanceof HTMLInputElement
+            ? turnstileField.value.trim()
+            : "";
+
+        if (!emailField.checkValidity()) {
+          emailField.reportValidity();
+          return;
+        }
+
+        const email = emailField.value.trim();
+        if (!email) return;
+
+        feedback.textContent = "";
+        submitButton.disabled = true;
+
+        fetch("/api/waitlist", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            email,
+            source: "landing",
+            company: companyField.value.trim(),
+            turnstileToken,
+          }),
+        })
+          .then(async (response) => {
+            const result = (await response.json().catch(() => null)) as {
+              ok: boolean;
+              already_joined?: boolean;
+              email_sent?: boolean;
+              error?: string;
+            } | null;
+            if (!response.ok || !result) {
+              if (result?.error === "bot_suspected") {
+                throw new Error("bot_suspected");
+              }
+              throw new Error(`waitlist_${response.status}`);
+            }
+            return result as {
+              ok: boolean;
+              already_joined: boolean;
+              email_sent: boolean;
+            };
+          })
+          .then((result) => {
+            if (!result.ok) {
+              throw new Error("waitlist_unknown");
+            }
+
+            feedback.textContent = result.already_joined
+              ? "You're already on the list. Welcome back."
+              : "You're on the list. Welcome to the Trybe.";
+
+            track("waitlist_submit", {
+              already_joined: result.already_joined,
+              email_sent: result.email_sent,
+              path: window.location.pathname,
+            });
+            form.reset();
+          })
+          .catch((error) => {
+            feedback.textContent =
+              error instanceof Error && error.message === "bot_suspected"
+                ? "Verification failed. Try again."
+                : "Something went wrong. Try again.";
+          })
+          .finally(() => {
+            submitButton.disabled = false;
+          });
+      });
+    }
+  </script>
+  {
+    waitlistTurnstileEnabled && (
+      <script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        async
+        defer
+      />
+    )
+  }
 </BaseLayout>

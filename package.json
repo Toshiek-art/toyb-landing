@@ -13,6 +13,7 @@
     "format:write": "prettier . --write",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && astro check",
+    "test:email": "node scripts/test-email.mjs",
     "test:a11y": "node scripts/test-a11y.mjs",
     "deploy": "npm run build && wrangler pages deploy dist --project-name \"${CLOUDFLARE_PAGES_PROJECT:-toyb}\""
   },

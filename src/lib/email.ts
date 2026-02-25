@@ -9,10 +9,19 @@ export interface WaitlistEmailEnv {
   SMTP_SECURE?: string;
 }
 
+export type EmailProvider = "resend" | "smtp";
+export type EmailErrorCode =
+  | "misconfigured_email"
+  | "provider_http_error"
+  | "provider_network_error"
+  | "smtp_unavailable"
+  | "smtp_send_failed";
+
 export interface EmailSendResult {
   ok: boolean;
-  provider: "resend" | "smtp";
-  error?: string;
+  provider: EmailProvider;
+  error_code?: EmailErrorCode;
+  provider_status?: number;
 }
 
 interface SendWelcomeEmailInput {
@@ -20,21 +29,45 @@ interface SendWelcomeEmailInput {
   env: WaitlistEmailEnv;
 }
 
-const DEFAULT_FROM = "Toyb <hello@toyb.space>";
 const SUBJECT = "Welcome to the Trybe.";
 const TEXT_BODY = `You're early. That matters.
 We'll write soon.
 — Toyb`;
 const HTML_BODY = `<p>You're early. That matters.<br/>We'll write soon.<br/>— Toyb</p>`;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const cleanString = (value: unknown): string =>
+  typeof value === "string" ? value.trim() : "";
+
+const extractFromEmail = (value: string): string => {
+  const match = value.match(/<([^<>]+)>/);
+  return cleanString(match?.[1] ?? value).toLowerCase();
+};
+
+const isValidFromAddress = (value: string): boolean => {
+  const email = extractFromEmail(value);
+  if (!EMAIL_PATTERN.test(email)) return false;
+
+  const domain = email.split("@")[1] ?? "";
+  return (
+    domain.length > 0 &&
+    domain.includes(".") &&
+    !domain.startsWith(".") &&
+    !domain.endsWith(".")
+  );
+};
+
+export const getWaitlistEmailProvider = (
+  env: Pick<WaitlistEmailEnv, "WAITLIST_EMAIL_PROVIDER">,
+): EmailProvider =>
+  cleanString(env.WAITLIST_EMAIL_PROVIDER).toLowerCase() === "smtp"
+    ? "smtp"
+    : "resend";
 
 export async function sendWaitlistWelcomeEmail(
   input: SendWelcomeEmailInput,
 ): Promise<EmailSendResult> {
-  const provider = (
-    input.env.WAITLIST_EMAIL_PROVIDER ?? "resend"
-  ).toLowerCase();
-
-  if (provider === "smtp") {
+  if (getWaitlistEmailProvider(input.env) === "smtp") {
     return sendViaSmtp(input);
   }
 
@@ -45,41 +78,50 @@ async function sendViaResend({
   to,
   env,
 }: SendWelcomeEmailInput): Promise<EmailSendResult> {
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) {
+  const apiKey = cleanString(env.RESEND_API_KEY);
+  const from = cleanString(env.WAITLIST_FROM);
+
+  if (!apiKey || !isValidFromAddress(from)) {
     return {
       ok: false,
       provider: "resend",
-      error: "Missing RESEND_API_KEY",
+      error_code: "misconfigured_email",
     };
   }
 
-  // TODO: verify and authenticate toyb.space in Resend before production sending.
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: env.WAITLIST_FROM ?? DEFAULT_FROM,
-      to: [to],
-      subject: SUBJECT,
-      text: TEXT_BODY,
-      html: HTML_BODY,
-    }),
-  });
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: SUBJECT,
+        text: TEXT_BODY,
+        html: HTML_BODY,
+      }),
+    });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
+    if (!response.ok) {
+      return {
+        ok: false,
+        provider: "resend",
+        error_code: "provider_http_error",
+        provider_status: response.status,
+      };
+    }
+
+    return { ok: true, provider: "resend" };
+  } catch {
     return {
       ok: false,
       provider: "resend",
-      error: `Resend HTTP ${response.status}: ${errorBody}`,
+      error_code: "provider_network_error",
     };
   }
-
-  return { ok: true, provider: "resend" };
 }
 
 async function sendViaSmtp({
@@ -96,7 +138,7 @@ async function sendViaSmtp({
     return {
       ok: false,
       provider: "smtp",
-      error: "SMTP fallback is only available in a Node runtime",
+      error_code: "smtp_unavailable",
     };
   }
 
@@ -104,19 +146,20 @@ async function sendViaSmtp({
     return {
       ok: false,
       provider: "smtp",
-      error: "SMTP fallback is disabled outside development",
+      error_code: "smtp_unavailable",
     };
   }
 
-  const host = env.SMTP_HOST;
+  const host = cleanString(env.SMTP_HOST);
   const port = Number(env.SMTP_PORT ?? "587");
-  const user = env.SMTP_USER;
-  const pass = env.SMTP_PASS;
-  if (!host || !port || !user || !pass) {
+  const user = cleanString(env.SMTP_USER);
+  const pass = cleanString(env.SMTP_PASS);
+  const from = cleanString(env.WAITLIST_FROM);
+  if (!host || !port || !user || !pass || !isValidFromAddress(from)) {
     return {
       ok: false,
       provider: "smtp",
-      error: "Missing SMTP_* configuration",
+      error_code: "misconfigured_email",
     };
   }
 
@@ -133,7 +176,7 @@ async function sendViaSmtp({
     });
 
     await transporter.sendMail({
-      from: env.WAITLIST_FROM ?? DEFAULT_FROM,
+      from,
       to,
       subject: SUBJECT,
       text: TEXT_BODY,
@@ -141,11 +184,11 @@ async function sendViaSmtp({
     });
 
     return { ok: true, provider: "smtp" };
-  } catch (error) {
+  } catch {
     return {
       ok: false,
       provider: "smtp",
-      error: error instanceof Error ? error.message : "SMTP send failed",
+      error_code: "smtp_send_failed",
     };
   }
 }

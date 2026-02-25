@@ -29,15 +29,19 @@ npm run dev
 | `npm run typecheck` | Run TypeScript typecheck                  |
 | `npm run check`     | Run typecheck + `astro check`             |
 | `npm run build`     | Build static output into `dist/`          |
+| `npm run test:email` | Call protected `/api/waitlist-test`      |
 | `npm run test:a11y` | Run axe-core checks on built pages        |
 | `npm run deploy`    | One-command Cloudflare Pages deploy       |
 
 ## Waitlist backend
 
 - API route: `POST /api/waitlist`
+- Admin test route: `POST /api/waitlist-test` (header `X-Admin-Token`)
 - Stores emails in Supabase table `waitlist`
 - Uses Supabase RPC + RLS with `SUPABASE_ANON_KEY` (no service-role key in app runtime)
 - Sends welcome email via Resend (default, HTTP API; Cloudflare-compatible)
+- Every API JSON response includes `request_id`
+- Optional duplicate resend switch: `WAITLIST_SEND_ON_DUPLICATE=true`
 - Optional SMTP fallback for local/dev Node runtime only
 
 Setup details:
@@ -50,6 +54,12 @@ Quick smoke test (API waitlist):
 
 ```bash
 node scripts/test-waitlist.mjs
+```
+
+Direct email self-test:
+
+```bash
+WAITLIST_ADMIN_TOKEN=... WAITLIST_TEST_EMAIL=you@example.com npm run test:email
 ```
 
 ## Logo wordmark (`toyb`)

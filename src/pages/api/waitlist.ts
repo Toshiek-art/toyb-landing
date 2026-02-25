@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { APIContext, APIRoute } from "astro";
-import { sendWaitlistWelcomeEmail } from "../../lib/email";
+import {
+  getWaitlistEmailProvider,
+  sendWaitlistWelcomeEmail,
+  type EmailProvider,
+} from "../../lib/email";
 
 export const prerender = false;
 
@@ -11,11 +15,19 @@ interface WaitlistRequestBody {
   turnstileToken?: unknown;
 }
 
-interface WaitlistResponse {
-  ok: boolean;
+interface WaitlistSuccessResponse {
+  ok: true;
   already_joined: boolean;
   email_sent: boolean;
-  error?: string;
+  request_id: string;
+}
+
+interface WaitlistErrorResponse {
+  ok: false;
+  error: ErrorCode;
+  request_id: string;
+  already_joined: false;
+  email_sent: false;
 }
 
 interface WaitlistRuntimeEnv {
@@ -32,6 +44,7 @@ interface WaitlistRuntimeEnv {
   SMTP_SECURE?: string;
   TURNSTILE_SECRET_KEY?: string;
   WAITLIST_TURNSTILE_ENABLED?: string;
+  WAITLIST_SEND_ON_DUPLICATE?: string;
 }
 
 interface RateLimitEntry {
@@ -48,10 +61,13 @@ type ErrorCode =
   | "bot_suspected"
   | "server_error";
 
-interface LogContext {
+interface WaitlistLogEntry {
   request_id: string;
-  timestamp: string;
-  ip_hash_prefix: string;
+  stage: string;
+  provider: EmailProvider;
+  email_sent: boolean;
+  already_joined: boolean;
+  error_code?: string;
   email_hash_prefix: string;
 }
 
@@ -134,7 +150,7 @@ const buildResponseHeaders = (
 };
 
 const json = (
-  body: WaitlistResponse | { ok: false; error: ErrorCode },
+  body: WaitlistSuccessResponse | WaitlistErrorResponse,
   status = 200,
   allowedOrigin?: string,
   extraHeaders?: Record<string, string>,
@@ -223,18 +239,26 @@ const prefix8 = (value: string | null): string =>
 const isTurnstileEnabled = (env: WaitlistRuntimeEnv): boolean =>
   cleanString(env.WAITLIST_TURNSTILE_ENABLED).toLowerCase() === "true";
 
-const logSecure = (
-  level: "warn" | "error",
-  event: string,
-  context: LogContext,
+const shouldSendOnDuplicate = (env: WaitlistRuntimeEnv): boolean =>
+  cleanString(env.WAITLIST_SEND_ON_DUPLICATE).toLowerCase() === "true";
+
+const logWaitlist = (
+  level: "info" | "warn" | "error",
+  entry: WaitlistLogEntry,
 ): void => {
   const payload = {
-    event,
-    request_id: context.request_id,
-    timestamp: context.timestamp,
-    ip_hash_prefix: context.ip_hash_prefix,
-    email_hash_prefix: context.email_hash_prefix,
+    request_id: entry.request_id,
+    stage: entry.stage,
+    provider: entry.provider,
+    email_sent: entry.email_sent,
+    already_joined: entry.already_joined,
+    email_hash_prefix: entry.email_hash_prefix,
+    ...(entry.error_code ? { error_code: entry.error_code } : {}),
   };
+  if (level === "info") {
+    console.info("[waitlist]", payload);
+    return;
+  }
   if (level === "warn") {
     console.warn("[waitlist]", payload);
     return;
@@ -311,9 +335,19 @@ const parseBodyWithLimit = async (
 };
 
 export const OPTIONS: APIRoute = async ({ request }) => {
+  const requestId = crypto.randomUUID();
   const allowedOrigin = getAllowedOrigin(request);
   if (!allowedOrigin) {
-    return json({ ok: false, error: "forbidden_origin" }, 403);
+    return json(
+      {
+        ok: false,
+        error: "forbidden_origin",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
+      },
+      403,
+    );
   }
 
   return new Response(null, {
@@ -323,27 +357,88 @@ export const OPTIONS: APIRoute = async ({ request }) => {
 };
 
 export const ALL: APIRoute = async ({ request }) => {
+  const requestId = crypto.randomUUID();
   const allowedOrigin = getAllowedOrigin(request) ?? undefined;
-  return json({ ok: false, error: "method_not_allowed" }, 405, allowedOrigin, {
-    allow: "POST, OPTIONS",
-  });
+  return json(
+    {
+      ok: false,
+      error: "method_not_allowed",
+      request_id: requestId,
+      already_joined: false,
+      email_sent: false,
+    },
+    405,
+    allowedOrigin,
+    {
+      allow: "POST, OPTIONS",
+    },
+  );
 };
 
 export const POST: APIRoute = async (context) => {
   const request = context.request;
   const env = getRuntimeEnv(context);
+  const requestId = crypto.randomUUID();
+  const provider = getWaitlistEmailProvider(env);
+  const duplicateSendsEnabled = shouldSendOnDuplicate(env);
+
+  logWaitlist("info", {
+    request_id: requestId,
+    stage: "request_received",
+    provider,
+    email_sent: false,
+    already_joined: false,
+    email_hash_prefix: "none",
+  });
 
   // Missing Origin is rejected by design to reduce CSRF/cross-site abuse surface.
   const allowedOrigin = getAllowedOrigin(request);
   if (!allowedOrigin) {
-    return json({ ok: false, error: "forbidden_origin" }, 403);
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "forbidden_origin",
+      email_hash_prefix: "none",
+    });
+    return json(
+      {
+        ok: false,
+        error: "forbidden_origin",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
+      },
+      403,
+    );
   }
 
   const contentType = cleanString(
     request.headers.get("content-type"),
   ).toLowerCase();
   if (!contentType.startsWith("application/json")) {
-    return json({ ok: false, error: "invalid_request" }, 415, allowedOrigin);
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "invalid_request",
+      email_hash_prefix: "none",
+    });
+    return json(
+      {
+        ok: false,
+        error: "invalid_request",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
+      },
+      415,
+      allowedOrigin,
+    );
   }
 
   const contentLengthHeader = cleanString(
@@ -352,8 +447,23 @@ export const POST: APIRoute = async (context) => {
   if (contentLengthHeader) {
     const parsedLength = Number(contentLengthHeader);
     if (Number.isFinite(parsedLength) && parsedLength > MAX_BODY_BYTES) {
+      logWaitlist("warn", {
+        request_id: requestId,
+        stage: "request_rejected",
+        provider,
+        email_sent: false,
+        already_joined: false,
+        error_code: "payload_too_large",
+        email_hash_prefix: "none",
+      });
       return json(
-        { ok: false, error: "payload_too_large" },
+        {
+          ok: false,
+          error: "payload_too_large",
+          request_id: requestId,
+          already_joined: false,
+          email_sent: false,
+        },
         413,
         allowedOrigin,
       );
@@ -363,18 +473,28 @@ export const POST: APIRoute = async (context) => {
   const supabaseUrl = cleanString(env.SUPABASE_URL);
   const supabaseAnonKey = cleanString(env.SUPABASE_ANON_KEY);
   if (!supabaseUrl || !supabaseAnonKey) {
+    logWaitlist("error", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "server_error",
+      email_hash_prefix: "none",
+    });
     return json(
       {
         ok: false,
         error: "server_error",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
       },
       500,
       allowedOrigin,
     );
   }
 
-  const requestId = crypto.randomUUID();
-  const timestamp = new Date().toISOString();
   const clientIp = getClientIp(request);
   const userAgent = cleanString(request.headers.get("user-agent"));
   const ipHash = await makeIpHash(clientIp, env.WAITLIST_IP_SALT);
@@ -382,20 +502,70 @@ export const POST: APIRoute = async (context) => {
   let body: WaitlistRequestBody;
   const bodyText = await parseBodyWithLimit(request, MAX_BODY_BYTES);
   if (bodyText === null) {
-    return json({ ok: false, error: "payload_too_large" }, 413, allowedOrigin);
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "payload_too_large",
+      email_hash_prefix: "none",
+    });
+    return json(
+      {
+        ok: false,
+        error: "payload_too_large",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
+      },
+      413,
+      allowedOrigin,
+    );
   }
 
   if (!bodyText) {
-    return json({ ok: false, error: "invalid_request" }, 400, allowedOrigin);
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "invalid_request",
+      email_hash_prefix: "none",
+    });
+    return json(
+      {
+        ok: false,
+        error: "invalid_request",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
+      },
+      400,
+      allowedOrigin,
+    );
   }
 
   try {
     body = JSON.parse(bodyText) as WaitlistRequestBody;
   } catch {
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "invalid_request",
+      email_hash_prefix: "none",
+    });
     return json(
       {
         ok: false,
         error: "invalid_request",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
       },
       400,
       allowedOrigin,
@@ -404,12 +574,21 @@ export const POST: APIRoute = async (context) => {
 
   const company = cleanString(body.company);
   if (company) {
+    logWaitlist("info", {
+      request_id: requestId,
+      stage: "honeypot_tripped",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      email_hash_prefix: "none",
+    });
     // Honeypot trap: pretend success without storing/sending.
     return json(
       {
         ok: true,
         already_joined: false,
         email_sent: false,
+        request_id: requestId,
       },
       200,
       allowedOrigin,
@@ -418,10 +597,22 @@ export const POST: APIRoute = async (context) => {
 
   const email = normalizeEmail(body.email);
   if (!isValidEmail(email)) {
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "invalid_request",
+      email_hash_prefix: "none",
+    });
     return json(
       {
         ok: false,
         error: "invalid_request",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
       },
       400,
       allowedOrigin,
@@ -429,20 +620,26 @@ export const POST: APIRoute = async (context) => {
   }
 
   const emailHash = await makeEmailHash(email, env.WAITLIST_IP_SALT);
-  const logContext: LogContext = {
-    request_id: requestId,
-    timestamp,
-    ip_hash_prefix: prefix8(ipHash),
-    email_hash_prefix: prefix8(emailHash),
-  };
+  const emailHashPrefix = prefix8(emailHash);
 
   const rateKey = clientIp ? `ip:${clientIp}` : `ua:${userAgent.slice(0, 80)}`;
   if (isRateLimited(rateKey)) {
-    logSecure("warn", "rate_limited", logContext);
+    logWaitlist("warn", {
+      request_id: requestId,
+      stage: "request_rejected",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "rate_limited",
+      email_hash_prefix: emailHashPrefix,
+    });
     return json(
       {
         ok: false,
         error: "rate_limited",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
       },
       429,
       allowedOrigin,
@@ -454,11 +651,22 @@ export const POST: APIRoute = async (context) => {
     const turnstileSecret = cleanString(env.TURNSTILE_SECRET_KEY);
 
     if (!turnstileToken || !turnstileSecret) {
-      logSecure("warn", "turnstile_missing", logContext);
+      logWaitlist("warn", {
+        request_id: requestId,
+        stage: "request_rejected",
+        provider,
+        email_sent: false,
+        already_joined: false,
+        error_code: "bot_suspected",
+        email_hash_prefix: emailHashPrefix,
+      });
       return json(
         {
           ok: false,
           error: "bot_suspected",
+          request_id: requestId,
+          already_joined: false,
+          email_sent: false,
         },
         403,
         allowedOrigin,
@@ -472,11 +680,22 @@ export const POST: APIRoute = async (context) => {
     });
 
     if (!verified) {
-      logSecure("warn", "turnstile_failed", logContext);
+      logWaitlist("warn", {
+        request_id: requestId,
+        stage: "request_rejected",
+        provider,
+        email_sent: false,
+        already_joined: false,
+        error_code: "bot_suspected",
+        email_hash_prefix: emailHashPrefix,
+      });
       return json(
         {
           ok: false,
           error: "bot_suspected",
+          request_id: requestId,
+          already_joined: false,
+          email_sent: false,
         },
         403,
         allowedOrigin,
@@ -504,10 +723,22 @@ export const POST: APIRoute = async (context) => {
     if (error) {
       const rpcCode = cleanString((error as { code?: string }).code);
       if (rpcCode === "22023") {
+        logWaitlist("warn", {
+          request_id: requestId,
+          stage: "request_rejected",
+          provider,
+          email_sent: false,
+          already_joined: false,
+          error_code: "invalid_request",
+          email_hash_prefix: emailHashPrefix,
+        });
         return json(
           {
             ok: false,
             error: "invalid_request",
+            request_id: requestId,
+            already_joined: false,
+            email_sent: false,
           },
           400,
           allowedOrigin,
@@ -521,28 +752,67 @@ export const POST: APIRoute = async (context) => {
       : undefined;
     alreadyJoined = row?.already_joined === true;
   } catch {
-    logSecure("error", "supabase_rpc_failed", logContext);
+    logWaitlist("error", {
+      request_id: requestId,
+      stage: "insert_failed",
+      provider,
+      email_sent: false,
+      already_joined: false,
+      error_code: "server_error",
+      email_hash_prefix: emailHashPrefix,
+    });
     return json(
       {
         ok: false,
         error: "server_error",
+        request_id: requestId,
+        already_joined: false,
+        email_sent: false,
       },
       500,
       allowedOrigin,
     );
   }
 
-  if (alreadyJoined) {
+  logWaitlist("info", {
+    request_id: requestId,
+    stage: "insert_ok",
+    provider,
+    email_sent: false,
+    already_joined: alreadyJoined,
+    email_hash_prefix: emailHashPrefix,
+  });
+
+  const shouldAttemptEmail = !alreadyJoined || duplicateSendsEnabled;
+  if (!shouldAttemptEmail) {
+    logWaitlist("info", {
+      request_id: requestId,
+      stage: "email_skipped_duplicate",
+      provider,
+      email_sent: false,
+      already_joined: true,
+      email_hash_prefix: emailHashPrefix,
+    });
     return json(
       {
         ok: true,
         already_joined: true,
         email_sent: false,
+        request_id: requestId,
       },
       200,
       allowedOrigin,
     );
   }
+
+  logWaitlist("info", {
+    request_id: requestId,
+    stage: "email_send_attempt",
+    provider,
+    email_sent: false,
+    already_joined: alreadyJoined,
+    email_hash_prefix: emailHashPrefix,
+  });
 
   const emailResult = await sendWaitlistWelcomeEmail({
     to: email,
@@ -550,18 +820,32 @@ export const POST: APIRoute = async (context) => {
   });
 
   if (!emailResult.ok) {
-    logSecure(
-      "error",
-      `welcome_email_failed:${emailResult.provider}`,
-      logContext,
-    );
+    logWaitlist("error", {
+      request_id: requestId,
+      stage: "email_send_failed",
+      provider: emailResult.provider,
+      email_sent: false,
+      already_joined: alreadyJoined,
+      error_code: emailResult.error_code ?? "send_failed",
+      email_hash_prefix: emailHashPrefix,
+    });
+  } else {
+    logWaitlist("info", {
+      request_id: requestId,
+      stage: "email_send_succeeded",
+      provider: emailResult.provider,
+      email_sent: true,
+      already_joined: alreadyJoined,
+      email_hash_prefix: emailHashPrefix,
+    });
   }
 
   return json(
     {
       ok: true,
-      already_joined: false,
+      already_joined: alreadyJoined,
       email_sent: emailResult.ok,
+      request_id: requestId,
     },
     200,
     allowedOrigin,

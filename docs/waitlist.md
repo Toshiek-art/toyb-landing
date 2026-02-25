@@ -1,20 +1,26 @@
 # Waitlist Backend
 
-This project includes a server endpoint at `POST /api/waitlist` for signup storage and welcome email automation.
+This project includes:
+
+- `POST /api/waitlist` for signup storage + welcome email automation.
+- `POST /api/waitlist-test` for protected, direct email self-test.
 
 ## Flow
 
 1. Frontend submits `{ email, source, company }` to `/api/waitlist`.
 2. Server validates + normalizes email, applies honeypot and soft rate-limit.
 3. Server calls Supabase RPC `insert_waitlist(...)` (SECURITY DEFINER).
-4. If row is new, server sends welcome email via Resend (default).
-5. Response shape:
+4. If row is new, server attempts welcome email via Resend (default).
+5. Duplicate rows do not trigger email by default (`WAITLIST_SEND_ON_DUPLICATE=false`).
+6. Every JSON response includes `request_id`.
+7. Response shape:
 
 ```json
 {
   "ok": true,
   "already_joined": false,
-  "email_sent": true
+  "email_sent": true,
+  "request_id": "1e6fbcd9-a8ac-4b03-b6e4-08eff7ef9808"
 }
 ```
 
@@ -35,10 +41,11 @@ This project includes a server endpoint at `POST /api/waitlist` for signup stora
 ## 2) Email setup (Resend)
 
 1. Create a Resend API key.
-2. Set:
+2. Set (required):
    - `RESEND_API_KEY`
    - `WAITLIST_FROM="Toyb <hello@toyb.space>"`
 3. Verify domain/sender in Resend for production sending from `toyb.space`.
+4. `WAITLIST_FROM` must contain a valid email address at your verified sender domain.
 
 ## 3) Cloudflare env vars
 
@@ -49,7 +56,9 @@ Set these in Cloudflare Pages/Workers environment variables (Production + Previe
 - `RESEND_API_KEY`
 - `WAITLIST_FROM`
 - `WAITLIST_IP_SALT`
+- `WAITLIST_ADMIN_TOKEN` (server-only, protects `/api/waitlist-test`)
 - optional: `WAITLIST_EMAIL_PROVIDER`
+- optional: `WAITLIST_SEND_ON_DUPLICATE` (`true`/`false`, default `false`)
 - optional: `WAITLIST_TURNSTILE_ENABLED` (`true`/`false`, default `false`)
 - optional: `TURNSTILE_SITE_KEY` (public widget key)
 - optional: `TURNSTILE_SECRET_KEY` (server secret for verification)
@@ -90,5 +99,43 @@ curl -i -X POST http://localhost:4321/api/waitlist \
 
 Expected:
 
-- first submit: `ok=true`, `already_joined=false`
-- repeated submit: `ok=true`, `already_joined=true`
+- first submit: `ok=true`, `already_joined=false`, `request_id` present
+- repeated submit: `ok=true`, `already_joined=true`, `email_sent=false`
+
+## 6) Protected self-test endpoint
+
+Use this to verify email delivery path directly (without waitlist insert):
+
+```bash
+curl -i -X POST http://localhost:4321/api/waitlist-test \
+  -H "content-type: application/json" \
+  -H "x-admin-token: $WAITLIST_ADMIN_TOKEN" \
+  -d '{"email":"you@example.com"}'
+```
+
+Response includes:
+
+- `request_id`
+- `email_sent`
+
+Local helper script:
+
+```bash
+WAITLIST_ADMIN_TOKEN=... WAITLIST_TEST_EMAIL=you@example.com npm run test:email
+```
+
+## 7) Observability
+
+Server logs are structured and sanitized:
+
+```json
+{
+  "request_id": "...",
+  "stage": "...",
+  "provider": "resend",
+  "email_sent": false,
+  "already_joined": false,
+  "error_code": "misconfigured_email",
+  "email_hash_prefix": "ab12cd34"
+}
+```

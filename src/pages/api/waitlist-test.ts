@@ -1,7 +1,7 @@
 import type { APIContext, APIRoute } from "astro";
 import {
-  getWaitlistEmailProvider,
-  sendWaitlistWelcomeEmail,
+  getEmailProvider,
+  sendWaitlistEmail,
   type WaitlistEmailEnv,
 } from "../../lib/email";
 
@@ -119,7 +119,7 @@ export const ALL: APIRoute = async () => {
 export const POST: APIRoute = async (context) => {
   const requestId = crypto.randomUUID();
   const env = getRuntimeEnv(context);
-  const provider = getWaitlistEmailProvider(env);
+  const provider = getEmailProvider(env);
   const adminToken = cleanString(env.WAITLIST_ADMIN_TOKEN);
   const receivedAdminToken = cleanString(
     context.request.headers.get("x-admin-token"),
@@ -213,8 +213,10 @@ export const POST: APIRoute = async (context) => {
     );
   }
 
-  const emailResult = await sendWaitlistWelcomeEmail({
+  const emailResult = await sendWaitlistEmail({
     to: email,
+    marketingConsent: false,
+    unsubscribeUrl: "https://toyb.space/unsubscribe",
     env,
   });
 

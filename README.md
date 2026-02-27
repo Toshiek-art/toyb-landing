@@ -29,7 +29,9 @@ npm run dev
 | `npm run typecheck` | Run TypeScript typecheck                  |
 | `npm run check`     | Run typecheck + `astro check`             |
 | `npm run build`     | Build static output into `dist/`          |
-| `npm run test:email` | Call protected `/api/waitlist-test`      |
+| `npm run test`       | Run backend tests (token + API)           |
+| `npm run test:waitlist` | Run waitlist smoke script (server required) |
+| `npm run test:email` | Call protected `/api/waitlist-test`       |
 | `npm run test:a11y` | Run axe-core checks on built pages        |
 | `npm run deploy`    | One-command Cloudflare Pages deploy       |
 
@@ -37,12 +39,34 @@ npm run dev
 
 - API route: `POST /api/waitlist`
 - Admin test route: `POST /api/waitlist-test` (header `X-Admin-Token`)
+- Admin APIs: `GET|POST /api/admin/*` (header `Authorization: Bearer <WAITLIST_ADMIN_TOKEN>`)
+- Unsubscribe page: `GET /unsubscribe?email=...&scope=...&ts=...&sig=...`
+- Unsubscribe API: `GET|POST /api/unsubscribe`
 - Stores emails in Supabase table `waitlist`
 - Uses Supabase RPC + RLS with `SUPABASE_ANON_KEY` (no service-role key in app runtime)
-- Sends welcome email via Resend (default, HTTP API; Cloudflare-compatible)
-- Every API JSON response includes `request_id`
-- Optional duplicate resend switch: `WAITLIST_SEND_ON_DUPLICATE=true`
-- Optional SMTP fallback for local/dev Node runtime only
+- Sends waitlist email using:
+  - `EMAIL_PROVIDER=mock` (local/dev/tests, no network call)
+  - `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` (production)
+- Unsubscribe is protected with HMAC signature (`WAITLIST_UNSUBSCRIBE_SECRET`, TTL 7 days)
+
+### Local dev setup
+
+Required env vars (see `.env.example`):
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `WAITLIST_ADMIN_TOKEN`
+- `WAITLIST_FROM`
+- `WAITLIST_IP_SALT`
+- `WAITLIST_ALLOWED_ORIGINS`
+- `WAITLIST_UNSUBSCRIBE_SECRET`
+- `WAITLIST_UNSUBSCRIBE_BASE_URL`
+- `EMAIL_PROVIDER=mock` (recommended locally)
+
+For production email delivery:
+
+- `EMAIL_PROVIDER=resend`
+- `RESEND_API_KEY`
 
 Setup details:
 
@@ -53,7 +77,7 @@ Setup details:
 Quick smoke test (API waitlist):
 
 ```bash
-node scripts/test-waitlist.mjs
+EMAIL_PROVIDER=mock npm run test:waitlist
 ```
 
 Direct email self-test:
@@ -61,6 +85,39 @@ Direct email self-test:
 ```bash
 WAITLIST_ADMIN_TOKEN=... WAITLIST_TEST_EMAIL=you@example.com npm run test:email
 ```
+
+Unsubscribe page manual QA:
+
+1. Open `/unsubscribe` without query params -> page shows `Link non valido o scaduto`.
+2. Open `/unsubscribe?email=...&scope=marketing&ts=...&sig=...` with a valid signed token -> page calls `POST /api/unsubscribe` and shows `Sei stato disiscritto`.
+
+## Admin console
+
+- Pages:
+- `/admin` dashboard
+- `/admin/waitlist` waitlist manager
+- `/admin/campaigns` campaign composer
+- `/admin/campaigns/:id` campaign detail
+- All admin APIs require `Authorization: Bearer <WAITLIST_ADMIN_TOKEN>`.
+- Admin pages are marked `noindex,nofollow`.
+- Campaign safety guard: recipient selection always enforces `marketing_consent=true` and `unsubscribed_at is null`.
+
+### Local admin usage
+
+1. Run dev server with mock email:
+
+```bash
+EMAIL_PROVIDER=mock npm run dev
+```
+
+2. Open `http://localhost:4321/admin`.
+3. Paste `WAITLIST_ADMIN_TOKEN` in the auth field.
+4. Preview and send a test campaign from `/admin/campaigns`.
+
+Expected in mock mode:
+
+- Send completes without calling Resend.
+- Campaign detail page shows recipients with `status=sent`.
 
 ## Logo wordmark (`toyb`)
 
@@ -221,7 +278,7 @@ Behavior:
 - Does not set optional cookies by default.
 - Stores user consent choice (`accepted` / `rejected`) in local storage.
 - Shows equal-weight **Reject** and **Accept** actions.
-- Links to `/cookies` policy page.
+- Links to `/privacy` policy page.
 
 ## SEO and metadata
 

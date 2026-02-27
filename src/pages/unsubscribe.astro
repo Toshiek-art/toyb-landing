@@ -1,0 +1,72 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const url = new URL(Astro.request.url);
+const email = url.searchParams.get("email")?.trim() ?? "";
+const scope = url.searchParams.get("scope")?.trim() ?? "";
+const ts = url.searchParams.get("ts")?.trim() ?? "";
+const sig = url.searchParams.get("sig")?.trim() ?? "";
+
+const hasRequiredParams =
+  email.length > 0 &&
+  scope.length > 0 &&
+  ts.length > 0 &&
+  sig.length > 0;
+
+let state: "success" | "invalid" = "invalid";
+
+if (hasRequiredParams) {
+  try {
+    const endpoint = new URL("/api/unsubscribe", Astro.url).toString();
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        scope,
+        ts,
+        sig,
+      }),
+    });
+
+    const body = (await response.json().catch(() => null)) as
+      | { status?: string }
+      | null;
+
+    if (response.ok && body?.status === "ok") {
+      state = "success";
+    }
+  } catch {
+    state = "invalid";
+  }
+}
+
+const message =
+  state === "success"
+    ? "Sei stato disiscritto"
+    : "Link non valido o scaduto";
+---
+
+<BaseLayout
+  title="toyb | Unsubscribe"
+  description="Manage your Toyb email subscription preferences."
+  canonical="https://toyb.space/unsubscribe"
+>
+  <section class="section" data-reveal>
+    <div class="section__head">
+      <h1>{message}</h1>
+      <p>
+        {state === "success"
+          ? "La tua preferenza e stata aggiornata."
+          : "Il link non puo essere usato. Richiedi una nuova email di conferma se necessario."}
+      </p>
+    </div>
+    <div class="hero-actions" aria-label="Unsubscribe actions">
+      <a class="button button-primary" href="/">Torna alla Home</a>
+    </div>
+  </section>
+</BaseLayout>

@@ -11,5 +11,16 @@ export default defineConfig({
   session: {
     driver: "memory",
   },
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      filter: (page) => {
+        try {
+          const pathname = new URL(page, "https://toyb.space").pathname;
+          return !pathname.startsWith("/admin");
+        } catch {
+          return !String(page).startsWith("/admin");
+        }
+      },
+    }),
+  ],
 });

@@ -1,0 +1,318 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="toyb | Admin Campaigns"
+  description="Internal campaign composer."
+  canonical="https://toyb.space/admin/campaigns"
+  robots="noindex,nofollow"
+>
+  <section class="section" data-reveal>
+    <div class="section__head">
+      <h1>Campaigns</h1>
+      <p>Create and send update campaigns to eligible users.</p>
+    </div>
+
+    <div class="admin-auth">
+      <label class="sr-only" for="admin-token-input">Admin token</label>
+      <input id="admin-token-input" type="password" placeholder="Admin token" />
+      <button class="button button-primary" id="admin-token-save" type="button">
+        Authenticate
+      </button>
+      <button class="button" id="admin-token-clear" type="button">Logout</button>
+    </div>
+
+    <form id="campaign-form" class="campaign-form" autocomplete="off">
+      <label>
+        Subject
+        <input name="subject" type="text" required />
+      </label>
+      <label>
+        Body (Markdown)
+        <textarea name="body_markdown" rows="10" required></textarea>
+      </label>
+
+      <fieldset>
+        <legend>Segment</legend>
+        <label>
+          <input type="checkbox" name="marketing_only" checked />
+          Marketing only (default ON)
+        </label>
+        <label>
+          <input type="checkbox" name="subscribed_only" checked />
+          Subscribed only (default ON)
+        </label>
+        <label>
+          Source
+          <input type="text" name="source" placeholder="landing" />
+        </label>
+        <label>
+          Beta
+          <select name="beta">
+            <option value="">Any</option>
+            <option value="invited">Invited</option>
+            <option value="active">Active</option>
+          </select>
+        </label>
+        <label>
+          From
+          <input type="date" name="from" />
+        </label>
+        <label>
+          To
+          <input type="date" name="to" />
+        </label>
+      </fieldset>
+
+      <div class="hero-actions">
+        <button class="button" id="preview-button" type="button">Preview recipients</button>
+        <button class="button button-primary" id="send-button" type="submit">
+          Send campaign
+        </button>
+      </div>
+
+      <label>
+        Confirm send by typing <strong>SEND</strong>
+        <input id="send-confirm" type="text" placeholder="SEND" />
+      </label>
+    </form>
+
+    <div class="result-grid">
+      <article class="admin-card">
+        <h2>Preview</h2>
+        <p id="preview-count">Recipient count: -</p>
+        <pre id="preview-sample">No preview yet.</pre>
+      </article>
+      <article class="admin-card">
+        <h2>Send result</h2>
+        <p id="send-summary">No campaign sent yet.</p>
+        <p id="send-link"></p>
+      </article>
+    </div>
+
+    <p class="admin-feedback" id="admin-feedback" aria-live="polite"></p>
+  </section>
+
+  <script>
+    // @ts-nocheck
+    import { track } from "../../../lib/analytics";
+    import {
+      adminFetch,
+      clearAdminToken,
+      getAdminToken,
+      setAdminToken,
+    } from "../../../lib/admin-client";
+
+    const tokenInput = document.getElementById("admin-token-input");
+    const saveButton = document.getElementById("admin-token-save");
+    const clearButton = document.getElementById("admin-token-clear");
+    const feedback = document.getElementById("admin-feedback");
+    const form = document.getElementById("campaign-form");
+    const previewButton = document.getElementById("preview-button");
+    const previewCount = document.getElementById("preview-count");
+    const previewSample = document.getElementById("preview-sample");
+    const sendSummary = document.getElementById("send-summary");
+    const sendLink = document.getElementById("send-link");
+    const sendConfirm = document.getElementById("send-confirm");
+
+    const setFeedback = (message) => {
+      if (feedback) feedback.textContent = message;
+    };
+
+    const getPayload = () => {
+      if (!(form instanceof HTMLFormElement)) return null;
+      const data = new FormData(form);
+      return {
+        subject: String(data.get("subject") ?? "").trim(),
+        body_markdown: String(data.get("body_markdown") ?? "").trim(),
+        segment: {
+          marketing_only: data.get("marketing_only") === "on",
+          subscribed_only: data.get("subscribed_only") === "on",
+          source: String(data.get("source") ?? "").trim() || null,
+          beta: String(data.get("beta") ?? "") || null,
+          from: String(data.get("from") ?? "") || null,
+          to: String(data.get("to") ?? "") || null,
+        },
+      };
+    };
+
+    const previewRecipients = async () => {
+      const payload = getPayload();
+      if (!payload) return;
+
+      const { response, body } = await adminFetch("/api/admin/campaigns/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ segment: payload.segment }),
+      });
+
+      if (!response.ok) {
+        setFeedback("Preview failed.");
+        return;
+      }
+
+      const count = Number(body?.recipient_count ?? 0);
+      const sample = Array.isArray(body?.sample_emails) ? body.sample_emails : [];
+      if (previewCount) previewCount.textContent = `Recipient count: ${count}`;
+      if (previewSample)
+        previewSample.textContent = sample.length > 0 ? sample.join("\n") : "No recipients.";
+      setFeedback("Preview ready.");
+
+      track("admin_campaign_preview", {
+        path: window.location.pathname,
+        recipient_count: count,
+      });
+    };
+
+    const sendCampaign = async () => {
+      const payload = getPayload();
+      if (!payload) return;
+
+      if (!payload.subject || !payload.body_markdown) {
+        setFeedback("Subject and body are required.");
+        return;
+      }
+
+      if (!(sendConfirm instanceof HTMLInputElement) || sendConfirm.value.trim() !== "SEND") {
+        setFeedback("Type SEND to confirm campaign delivery.");
+        return;
+      }
+
+      const { response, body } = await adminFetch("/api/admin/campaigns/send", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        setFeedback("Send failed.");
+        return;
+      }
+
+      const sent = Number(body?.sent ?? 0);
+      const failed = Number(body?.failed ?? 0);
+      const recipientCount = Number(body?.recipient_count ?? 0);
+      const campaignId = String(body?.campaign_id ?? "").trim();
+
+      if (sendSummary) {
+        sendSummary.textContent = `Campaign sent. recipients=${recipientCount}, sent=${sent}, failed=${failed}`;
+      }
+
+      if (sendLink) {
+        sendLink.innerHTML = campaignId
+          ? `<a href="/admin/campaigns/${campaignId}">Open campaign detail</a>`
+          : "";
+      }
+
+      setFeedback("Campaign completed.");
+      track("admin_campaign_send", {
+        path: window.location.pathname,
+        campaign_id: campaignId || "none",
+        recipient_count: recipientCount,
+        sent,
+        failed,
+      });
+    };
+
+    saveButton?.addEventListener("click", () => {
+      if (!(tokenInput instanceof HTMLInputElement)) return;
+      const token = tokenInput.value.trim();
+      if (!token) {
+        setFeedback("Insert admin token.");
+        return;
+      }
+      setAdminToken(token);
+      tokenInput.value = "";
+      setFeedback("Token saved.");
+    });
+
+    clearButton?.addEventListener("click", () => {
+      clearAdminToken();
+      setFeedback("Logged out.");
+    });
+
+    previewButton?.addEventListener("click", () => {
+      previewRecipients();
+    });
+
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sendCampaign();
+    });
+
+    if (!getAdminToken()) {
+      setFeedback("Insert admin token to preview/send campaigns.");
+    }
+  </script>
+
+  <style>
+    .admin-auth,
+    .campaign-form {
+      display: grid;
+      gap: 0.8rem;
+      margin-block: 1rem;
+    }
+
+    .admin-auth {
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+    }
+
+    .campaign-form input,
+    .campaign-form textarea,
+    .campaign-form select {
+      width: 100%;
+      border-radius: 0.85rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.62rem 0.75rem;
+    }
+
+    fieldset {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.8rem;
+      display: grid;
+      gap: 0.7rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .result-grid {
+      margin-top: 1rem;
+      display: grid;
+      gap: 0.8rem;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .admin-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.95rem;
+      background: color-mix(in srgb, var(--surface) 84%, transparent);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-radius: var(--radius-sm);
+      padding: 0.65rem;
+      border: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 84%, transparent);
+      min-height: 80px;
+    }
+
+    .admin-feedback {
+      min-height: 1.2rem;
+      margin-top: 0.7rem;
+    }
+
+    @media (max-width: 840px) {
+      .admin-auth {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</BaseLayout>

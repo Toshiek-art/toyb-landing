@@ -4,16 +4,18 @@ This project includes:
 
 - `POST /api/waitlist` for signup storage + welcome email automation.
 - `POST /api/waitlist-test` for protected, direct email self-test.
+- `GET|POST /api/unsubscribe` for scoped opt-out (`all` or `marketing`).
 
 ## Flow
 
-1. Frontend submits `{ email, source, company }` to `/api/waitlist`.
+1. Frontend submits `{ email, source, company, age_confirmed, privacy_accepted, marketing_consent }` to `/api/waitlist`.
 2. Server validates + normalizes email, applies honeypot and soft rate-limit.
-3. Server calls Supabase RPC `insert_waitlist(...)` (SECURITY DEFINER).
-4. If row is new, server attempts welcome email via Resend (default).
-5. Duplicate rows do not trigger email by default (`WAITLIST_SEND_ON_DUPLICATE=false`).
-6. Every JSON response includes `request_id`.
-7. Response shape:
+3. Server rejects requests without required consents (`age_confirmed=true`, `privacy_accepted=true`).
+4. Server calls Supabase RPC `insert_waitlist(...)` (SECURITY DEFINER).
+5. If row is new, server attempts welcome email via Resend (default).
+6. Duplicate rows do not trigger email by default (`WAITLIST_SEND_ON_DUPLICATE=false`).
+7. Every JSON response includes `request_id`.
+8. Response shape:
 
 ```json
 {
@@ -32,6 +34,8 @@ This project includes:
 ```sql
 -- file: supabase/migrations/20260223184000_create_waitlist.sql
 -- file: supabase/migrations/20260223200500_waitlist_rpc_hardening.sql
+-- file: supabase/migrations/20260226153000_waitlist_consents.sql
+-- file: supabase/migrations/20260226174000_waitlist_checkbox_consents.sql
 ```
 
 3. Copy project credentials:
@@ -94,13 +98,15 @@ This uses `nodemailer` and is intended for Node runtime only (not Cloudflare Wor
 ```bash
 curl -i -X POST http://localhost:4321/api/waitlist \
   -H "content-type: application/json" \
-  -d '{"email":"hello@example.com","source":"landing","company":""}'
+  -d '{"email":"hello@example.com","source":"landing","company":"","age_confirmed":true,"privacy_accepted":true,"marketing_consent":false}'
 ```
 
 Expected:
 
 - first submit: `ok=true`, `already_joined=false`, `request_id` present
 - repeated submit: `ok=true`, `already_joined=true`, `email_sent=false`
+- missing age consent: `400` + `error="invalid_request"` + `error_code="age_required"`
+- missing privacy consent: `400` + `error="invalid_request"` + `error_code="privacy_required"`
 
 ## 6) Protected self-test endpoint
 
@@ -124,7 +130,63 @@ Local helper script:
 WAITLIST_ADMIN_TOKEN=... WAITLIST_TEST_EMAIL=you@example.com npm run test:email
 ```
 
-## 7) Observability
+## 7) Unsubscribe endpoint
+
+All communications:
+
+```bash
+curl -i "http://localhost:4321/api/unsubscribe?email=hello@example.com&scope=all"
+```
+
+Only marketing/newsletter:
+
+```bash
+curl -i "http://localhost:4321/api/unsubscribe?email=hello@example.com&scope=marketing"
+```
+
+Response includes:
+
+- `request_id`
+- `scope`
+- `updated`
+- `unsubscribed_all`
+- `unsubscribed_marketing`
+
+## 8) Recipient filters (Resend campaigns/batches)
+
+Product updates / early access:
+
+- `consent_waitlist = true`
+- `unsubscribed_all = false`
+
+Newsletter / marketing:
+
+- `marketing_consent = true`
+- `unsubscribed_marketing = false`
+- `unsubscribed_all = false`
+
+DB helper functions (service role):
+
+- `public.waitlist_recipients_product_updates()`
+- `public.waitlist_recipients_marketing()`
+
+## 9) Inspect waitlist rows
+
+```sql
+select
+  email,
+  age_confirmed,
+  privacy_accepted,
+  marketing_consent,
+  privacy_version,
+  privacy_accepted_at,
+  marketing_consent_at
+from public.waitlist
+order by created_at desc
+limit 50;
+```
+
+## 10) Observability
 
 Server logs are structured and sanitized:
 

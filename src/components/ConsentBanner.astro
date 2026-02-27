@@ -3,7 +3,7 @@ interface Props {
   policyHref?: string;
 }
 
-const { policyHref = "/cookies" } = Astro.props;
+const { policyHref = "/privacy" } = Astro.props;
 ---
 
 <aside
@@ -17,7 +17,7 @@ const { policyHref = "/cookies" } = Astro.props;
     remain disabled until you provide consent.
   </p>
   <div class="consent-actions" aria-label="Consent actions">
-    <a href={policyHref}>Cookie policy</a>
+    <a href={policyHref}>Privacy policy</a>
     <button
       type="button"
       class="button button-secondary"

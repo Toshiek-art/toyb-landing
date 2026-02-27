@@ -36,7 +36,6 @@ Documento tecnico di stato della landing `toyb.space` con tutto ciò che è incl
 
 - `/` landing principale
 - `/privacy`
-- `/cookies`
 - `/accessibility`
 - `/terms`
 - `/imprint`

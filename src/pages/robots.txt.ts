@@ -6,6 +6,10 @@ export const GET: APIRoute = () => {
   const body = [
     "User-agent: *",
     "Allow: /",
+    "Disallow: /admin",
+    "Disallow: /admin/",
+    "Disallow: /api/admin",
+    "Disallow: /api/admin/",
     "",
     "Sitemap: https://toyb.space/sitemap-index.xml",
   ].join("\n");

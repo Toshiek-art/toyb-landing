@@ -15,7 +15,6 @@ const port = Number(process.env.A11Y_PORT || 4173);
 const routes = [
   "/",
   "/privacy",
-  "/cookies",
   "/accessibility",
   "/terms",
   "/imprint",

@@ -2,12 +2,14 @@
 import FeatureGrid from "../components/FeatureGrid.astro";
 import Hero from "../components/Hero.astro";
 import Section from "../components/Section.astro";
+import { getPrivacyHref, PRIVACY_VERSION } from "../lib/privacy";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
 export const prerender = true;
 const waitlistTurnstileEnabled =
   import.meta.env.WAITLIST_TURNSTILE_ENABLED === "true";
 const turnstileSiteKey = import.meta.env.TURNSTILE_SITE_KEY ?? "";
+const privacyHref = getPrivacyHref();
 
 const whyItems = [
   {
@@ -52,17 +54,26 @@ const creatorBullets = [
       Early members get direct access, private feedback channel, and lifetime
       beta perks.
     </p>
-    <form class="waitlist__form" data-waitlist-form>
-      <label class="sr-only" for="waitlist-email">Email address</label>
-      <input
-        id="waitlist-email"
-        class="waitlist__input"
-        name="email"
-        type="email"
-        autocomplete="email"
-        placeholder="Your email"
-        required
-      />
+    <form
+      class="waitlist__form"
+      data-waitlist-form
+      data-privacy-version={PRIVACY_VERSION}
+    >
+      <div class="waitlist__row">
+        <label class="sr-only" for="waitlist-email">Email address</label>
+        <input
+          id="waitlist-email"
+          class="waitlist__input"
+          name="email"
+          type="email"
+          autocomplete="email"
+          placeholder="Your email"
+          required
+        />
+        <button class="button button-primary waitlist__button" type="submit">
+          Request early access
+        </button>
+      </div>
       <div class="waitlist__honeypot" aria-hidden="true">
         <label for="waitlist-company">Company</label>
         <input
@@ -73,6 +84,33 @@ const creatorBullets = [
           autocomplete="off"
         />
       </div>
+      <div class="waitlist__consents">
+        <label class="waitlist__consent">
+          <input
+            class="waitlist__checkbox"
+            name="age_privacy_confirmed"
+            type="checkbox"
+            required
+          />
+          <span>
+            I declare I am at least 16 years old.{" "}
+            <a href={privacyHref} data-privacy-version={PRIVACY_VERSION}
+              >Privacy policy</a
+            >.
+          </span>
+        </label>
+        <label class="waitlist__consent">
+          <input
+            class="waitlist__checkbox"
+            name="marketing_consent"
+            type="checkbox"
+          />
+          <span>
+            I consent to receive promotional emails and launch updates
+            (newsletter).
+          </span>
+        </label>
+      </div>
       {
         waitlistTurnstileEnabled && (
           <div class="waitlist__turnstile">
@@ -80,9 +118,6 @@ const creatorBullets = [
           </div>
         )
       }
-      <button class="button button-primary waitlist__button" type="submit">
-        Request early access
-      </button>
     </form>
     <p class="waitlist__feedback" aria-live="polite" data-waitlist-feedback></p>
   </section>
@@ -132,7 +167,7 @@ const creatorBullets = [
           href="/imprint"
           data-track="cta_preview_access">Get early access</a
         >
-        <a class="button" href="#why-toyb" data-track="cta_preview_learn"
+        <a class="button" href="/#why-toyb" data-track="cta_preview_learn"
           >See how it works</a
         >
       </div>
@@ -151,12 +186,18 @@ const creatorBullets = [
 
         const emailField = form.elements.namedItem("email");
         const companyField = form.elements.namedItem("company");
+        const agePrivacyField =
+          form.elements.namedItem("age_privacy_confirmed");
+        const marketingConsentField =
+          form.elements.namedItem("marketing_consent");
         const turnstileField = form.querySelector(
           'input[name="cf-turnstile-response"]',
         );
         const submitButton = form.querySelector('button[type="submit"]');
         if (!(emailField instanceof HTMLInputElement)) return;
         if (!(companyField instanceof HTMLInputElement)) return;
+        if (!(agePrivacyField instanceof HTMLInputElement)) return;
+        if (!(marketingConsentField instanceof HTMLInputElement)) return;
         if (!(submitButton instanceof HTMLButtonElement)) return;
         const turnstileToken =
           turnstileField instanceof HTMLInputElement
@@ -167,9 +208,16 @@ const creatorBullets = [
           emailField.reportValidity();
           return;
         }
+        if (!agePrivacyField.checked) {
+          feedback.textContent =
+            "Please confirm you are at least 16 and accept the Privacy Policy.";
+          agePrivacyField.reportValidity();
+          return;
+        }
 
         const email = emailField.value.trim();
         if (!email) return;
+        const privacyVersion = form.dataset.privacyVersion ?? "";
 
         feedback.textContent = "";
         submitButton.disabled = true;
@@ -182,36 +230,50 @@ const creatorBullets = [
             source: "landing",
             company: companyField.value.trim(),
             turnstileToken,
+            age_confirmed: agePrivacyField.checked,
+            privacy_accepted: agePrivacyField.checked,
+            marketing_consent: marketingConsentField.checked,
+            privacy_version: privacyVersion,
           }),
         })
           .then(async (response) => {
             const result = (await response.json().catch(() => null)) as {
-              ok: boolean;
-              already_joined?: boolean;
+              status: "ok" | "error" | "forbidden";
+              email?: string;
+              inserted?: boolean;
+              updated?: boolean;
               email_sent?: boolean;
-              error?: string;
+              email_error_code?: string;
+              code?: string;
             } | null;
             if (!response.ok || !result) {
-              throw new Error(result?.error ?? `waitlist_${response.status}`);
+              throw new Error(result?.code ?? `waitlist_${response.status}`);
             }
             return result as {
-              ok: boolean;
-              already_joined: boolean;
+              status: "ok";
+              inserted: boolean;
+              updated: boolean;
               email_sent: boolean;
+              email_error_code?: string;
             };
           })
           .then((result) => {
-            if (!result.ok) {
+            if (result.status !== "ok") {
               throw new Error("waitlist_unknown");
             }
 
-            feedback.textContent = result.already_joined
-              ? "You're already on the list. Welcome back."
-              : "You're on the list. Welcome to the Trybe.";
+            if (result.email_sent) {
+              feedback.textContent = "You're on the list. Check your inbox.";
+            } else {
+              feedback.textContent =
+                "You're on the list, but we could not send the email. Retry in a moment or contact support.";
+            }
 
             track("waitlist_submit", {
-              already_joined: result.already_joined,
+              inserted: result.inserted,
+              updated: result.updated,
               email_sent: result.email_sent,
+              email_error_code: result.email_error_code ?? "none",
               path: window.location.pathname,
             });
             form.reset();
@@ -219,10 +281,6 @@ const creatorBullets = [
           .catch((error) => {
             const message =
               error instanceof Error ? error.message : "unknown_error";
-            if (message === "bot_suspected") {
-              feedback.textContent = "Verification failed. Try again.";
-              return;
-            }
             if (message === "forbidden_origin") {
               feedback.textContent =
                 "This origin is not allowed for submissions.";
@@ -230,6 +288,16 @@ const creatorBullets = [
             }
             if (message === "invalid_request") {
               feedback.textContent = "Please check the email and try again.";
+              return;
+            }
+            if (message === "age_required") {
+              feedback.textContent =
+                "Please confirm you are at least 16 years old.";
+              return;
+            }
+            if (message === "privacy_required") {
+              feedback.textContent =
+                "Please accept the Privacy Policy to continue.";
               return;
             }
             if (message === "rate_limited") {

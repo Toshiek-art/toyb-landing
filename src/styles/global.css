@@ -497,6 +497,12 @@ a:not(.button):not(.wordmark):not(.logo):not(.nav-link):hover {
   gap: var(--space-3);
 }
 
+.waitlist__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .waitlist__input {
   width: 100%;
   min-height: 2.85rem;
@@ -527,6 +533,32 @@ a:not(.button):not(.wordmark):not(.logo):not(.nav-link):hover {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+.waitlist__consents {
+  display: grid;
+  gap: 0.7rem;
+  text-align: left;
+}
+
+.waitlist__consent {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: start;
+  color: color-mix(in srgb, var(--text) 90%, transparent);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.waitlist__checkbox {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+
+.waitlist__consent a {
+  color: var(--accent);
+  text-underline-offset: 2px;
 }
 
 .waitlist__turnstile {
@@ -831,7 +863,7 @@ a:not(.button):not(.wordmark):not(.logo):not(.nav-link):hover {
 }
 
 @media (min-width: 48rem) {
-  .waitlist__form {
+  .waitlist__row {
     flex-direction: row;
     align-items: stretch;
   }

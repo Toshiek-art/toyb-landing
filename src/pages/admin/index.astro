@@ -1,0 +1,178 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+---
+
+<BaseLayout
+  title="toyb | Admin Dashboard"
+  description="Internal admin dashboard for waitlist operations."
+  canonical="https://toyb.space/admin"
+  robots="noindex,nofollow"
+>
+  <section class="section" data-reveal>
+    <div class="section__head">
+      <h1>Admin Dashboard</h1>
+      <p>Internal waitlist, beta and campaign controls.</p>
+    </div>
+
+    <div class="admin-auth">
+      <label class="sr-only" for="admin-token-input">Admin token</label>
+      <input id="admin-token-input" type="password" placeholder="Admin token" />
+      <button class="button button-primary" id="admin-token-save" type="button">
+        Authenticate
+      </button>
+      <button class="button" id="admin-token-clear" type="button">Logout</button>
+    </div>
+
+    <p class="admin-feedback" id="admin-feedback" aria-live="polite"></p>
+
+    <div class="admin-stats" id="admin-stats">
+      <article class="admin-card"><h2>Total</h2><p id="stat-total">-</p></article>
+      <article class="admin-card">
+        <h2>Marketing opt-in</h2>
+        <p id="stat-marketing">-</p>
+      </article>
+      <article class="admin-card"><h2>Unsubscribed</h2><p id="stat-unsubscribed">-</p></article>
+      <article class="admin-card"><h2>Last 7 days</h2><p id="stat-last7">-</p></article>
+      <article class="admin-card"><h2>Beta invited</h2><p id="stat-invited">-</p></article>
+      <article class="admin-card"><h2>Beta active</h2><p id="stat-active">-</p></article>
+    </div>
+
+    <div class="hero-actions">
+      <a class="button button-primary" href="/admin/waitlist">Manage waitlist</a>
+      <a class="button" href="/admin/campaigns">Create campaign</a>
+    </div>
+  </section>
+
+  <script>
+    // @ts-nocheck
+    import { track } from "../../lib/analytics";
+    import {
+      adminFetch,
+      clearAdminToken,
+      getAdminToken,
+      setAdminToken,
+    } from "../../lib/admin-client";
+
+    const tokenInput = document.getElementById("admin-token-input");
+    const saveButton = document.getElementById("admin-token-save");
+    const clearButton = document.getElementById("admin-token-clear");
+    const feedback = document.getElementById("admin-feedback");
+
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(value);
+    };
+
+    const setFeedback = (message) => {
+      if (feedback) feedback.textContent = message;
+    };
+
+    const loadStats = async () => {
+      const { response, body } = await adminFetch("/api/admin/stats");
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setFeedback("Authentication required or invalid token.");
+          return;
+        }
+
+        setFeedback("Unable to load stats.");
+        return;
+      }
+
+      setText("stat-total", body?.total ?? 0);
+      setText("stat-marketing", body?.marketing_opt_in ?? 0);
+      setText("stat-unsubscribed", body?.unsubscribed ?? 0);
+      setText("stat-last7", body?.last_7_days ?? 0);
+      setText("stat-invited", body?.beta_invited ?? 0);
+      setText("stat-active", body?.beta_active ?? 0);
+      setFeedback("Authenticated.");
+    };
+
+    saveButton?.addEventListener("click", () => {
+      if (!(tokenInput instanceof HTMLInputElement)) return;
+      const token = tokenInput.value.trim();
+      if (!token) {
+        setFeedback("Insert admin token.");
+        return;
+      }
+      setAdminToken(token);
+      tokenInput.value = "";
+      loadStats();
+    });
+
+    clearButton?.addEventListener("click", () => {
+      clearAdminToken();
+      setFeedback("Logged out.");
+      setText("stat-total", "-");
+      setText("stat-marketing", "-");
+      setText("stat-unsubscribed", "-");
+      setText("stat-last7", "-");
+      setText("stat-invited", "-");
+      setText("stat-active", "-");
+    });
+
+    if (getAdminToken()) {
+      loadStats();
+    } else {
+      setFeedback("Insert admin token to load data.");
+    }
+
+    track("admin_dashboard_view", { path: window.location.pathname });
+  </script>
+
+  <style>
+    .admin-auth {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      gap: 0.6rem;
+      margin-block: 1.2rem;
+    }
+
+    .admin-auth input {
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.72rem 0.9rem;
+    }
+
+    .admin-feedback {
+      min-height: 1.25rem;
+      margin-block: 0.3rem 1rem;
+    }
+
+    .admin-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.8rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .admin-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0.95rem;
+      background: color-mix(in srgb, var(--surface) 84%, transparent);
+    }
+
+    .admin-card h2 {
+      font-size: var(--text-sm);
+      margin-bottom: 0.45rem;
+    }
+
+    .admin-card p {
+      color: var(--text);
+      font-size: var(--text-xl);
+      font-family: var(--font-heading);
+    }
+
+    @media (max-width: 840px) {
+      .admin-auth {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</BaseLayout>

@@ -1,6 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 
 const cleanString = (value) => (typeof value === "string" ? value.trim() : "");
+const DEFAULT_ADMIN_ALLOWED_ORIGINS = [
+  "https://toyb.space",
+  "https://www.toyb.space",
+  "http://localhost:4321",
+  "http://127.0.0.1:4321",
+];
 
 const json = (body, status) =>
   new Response(JSON.stringify(body), {
@@ -26,13 +32,40 @@ const timingSafeStringEqual = (left, right) => {
   return timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-const isSameOrigin = (request) => {
+const parseAllowedOrigins = (value) => {
+  const candidates = cleanString(value)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  const normalized = candidates.length > 0
+    ? candidates
+    : DEFAULT_ADMIN_ALLOWED_ORIGINS;
+  const out = new Set();
+
+  for (const origin of normalized) {
+    try {
+      out.add(new URL(origin).origin);
+    } catch {
+      // Ignore malformed configured values.
+    }
+  }
+
+  return out;
+};
+
+const isSameOrigin = (request, allowedOrigins) => {
   const origin = cleanString(request.headers.get("origin"));
   if (!origin) return true;
 
   try {
+    const normalizedOrigin = new URL(origin).origin;
+    if (!allowedOrigins.has(normalizedOrigin)) {
+      return false;
+    }
+
     const requestOrigin = new URL(request.url).origin;
-    return new URL(origin).origin === requestOrigin;
+    return normalizedOrigin === requestOrigin;
   } catch {
     return false;
   }
@@ -48,7 +81,8 @@ export const getAdminRuntimeEnv = (context) => {
 };
 
 export const requireAdminAuth = (context, env) => {
-  if (!isSameOrigin(context.request)) {
+  const allowedOrigins = parseAllowedOrigins(env.ADMIN_ALLOWED_ORIGINS);
+  if (!isSameOrigin(context.request, allowedOrigins)) {
     return json({ status: "error", code: "forbidden_origin" }, 403);
   }
 

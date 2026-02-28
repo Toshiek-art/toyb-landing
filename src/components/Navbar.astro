@@ -6,10 +6,11 @@ const links = [
   { href: "/#creators", label: "Built for creators" },
   { href: "/#preview", label: "Preview" },
 ];
+const isHome = Astro.url.pathname === "/";
 ---
 
 <div class="navbar layout-shell" data-reveal>
-  <Logo variant="slice" size="md" asLink />
+  <Logo variant="slice" size="md" asLink={!isHome} experimentalCursor />
 
   <nav aria-label="Primary">
     <ul class="nav-links">

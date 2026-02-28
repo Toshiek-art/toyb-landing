@@ -3,9 +3,15 @@ interface Props {
   variant?: "slice" | "bar";
   size?: "sm" | "md" | "lg";
   asLink?: boolean;
+  experimentalCursor?: boolean;
 }
 
-const { variant = "slice", size = "md", asLink = true } = Astro.props as Props;
+const {
+  variant = "slice",
+  size = "md",
+  asLink = true,
+  experimentalCursor = false,
+} = Astro.props as Props;
 
 const classes = `logo logo--${variant} logo--${size}`;
 const ariaLabel = "toyb home";
@@ -14,17 +20,108 @@ const ariaLabel = "toyb home";
 {
   asLink ? (
     <a href="/" class={classes} aria-label={ariaLabel}>
-      <>
-        <span class="logo__t">toy</span>
-        <span class="logo__b">b</span>
-      </>
+      {experimentalCursor ? (
+        <>
+          {/* Legacy text logo kept for rollback:
+          <span class="logo__t">toy</span>
+          <span class="logo__b">b</span>
+          */}
+          <svg
+            class="logo__svg"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 560 180"
+            width="4.92em"
+            height="1.56em"
+            role="img"
+            aria-label="toyb"
+          >
+            <text class="logo__word" x="70" y="136">toyb</text>
+            <rect class="logo__cursor" x="400" y="66" width="18" height="55" rx="5" />
+          </svg>
+        </>
+      ) : (
+        <>
+          <span class="logo__t">toy</span>
+          <span class="logo__b">b</span>
+        </>
+      )}
     </a>
   ) : (
     <span class={classes} role="img" aria-label="toyb">
-      <>
-        <span class="logo__t">toy</span>
-        <span class="logo__b">b</span>
-      </>
+      {experimentalCursor ? (
+        <>
+          {/* Legacy text logo kept for rollback:
+          <span class="logo__t">toy</span>
+          <span class="logo__b">b</span>
+          */}
+          <svg
+            class="logo__svg"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 560 180"
+            width="4.92em"
+            height="1.56em"
+            role="img"
+            aria-label="toyb"
+          >
+            <text class="logo__word" x="70" y="136">toyb</text>
+            <rect class="logo__cursor" x="400" y="66" width="18" height="55" rx="5" />
+          </svg>
+        </>
+      ) : (
+        <>
+          <span class="logo__t">toy</span>
+          <span class="logo__b">b</span>
+        </>
+      )}
     </span>
   )
 }
+
+<style>
+  .logo__svg {
+    width: 4.92em;
+    height: 1.56em;
+    overflow: visible;
+    display: block;
+  }
+
+  .logo__word {
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Inter",
+      "Space Grotesk",
+      "Sora",
+      "Segoe UI",
+      Roboto,
+      Arial,
+      sans-serif;
+    font-size: 135px;
+    font-weight: 700;
+    letter-spacing: -2px;
+    fill: currentColor;
+  }
+
+  @keyframes logoCursorBlink {
+    0%,
+    70% {
+      opacity: 1;
+    }
+    71%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .logo__cursor {
+    fill: var(--accent);
+    animation: logoCursorBlink 1.1s steps(1) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logo__cursor {
+      animation: none;
+    }
+  }
+</style>

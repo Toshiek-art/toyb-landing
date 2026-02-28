@@ -56,6 +56,7 @@ Required env vars (see `.env.example`):
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `WAITLIST_ADMIN_TOKEN`
+- `ADMIN_ALLOWED_ORIGINS` (exact comma-separated origins only, no wildcards)
 - `WAITLIST_FROM`
 - `WAITLIST_IP_SALT`
 - `WAITLIST_ALLOWED_ORIGINS`
@@ -99,6 +100,7 @@ Unsubscribe page manual QA:
 - `/admin/campaigns` campaign composer
 - `/admin/campaigns/:id` campaign detail
 - All admin APIs require `Authorization: Bearer <WAITLIST_ADMIN_TOKEN>`.
+- Admin same-origin check uses `ADMIN_ALLOWED_ORIGINS` exact matches.
 - Admin pages are marked `noindex,nofollow`.
 - Campaign safety guard: recipient selection always enforces `marketing_consent=true` and `unsubscribed_at is null`.
 

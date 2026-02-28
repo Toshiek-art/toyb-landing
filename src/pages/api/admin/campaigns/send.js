@@ -34,6 +34,9 @@ const listCampaignRecipientEmails = async (supabase, campaignId) => {
 
     const rows = Array.isArray(data) ? data : [];
     for (const row of rows) {
+      if (cleanString(row.status).toLowerCase() === "sent") {
+        continue;
+      }
       const email = cleanString(row.email).toLowerCase();
       if (!email) continue;
       emails.add(email);
@@ -74,6 +77,7 @@ export const POST = async (context) => {
   let bodyMarkdown = cleanString(payload.body_markdown);
   let safeSegment = normalizeSafeCampaignSegment(payload.segment ?? {});
   let recipientEmails = [];
+  let didBeginSend = false;
 
   try {
     if (!hasExistingCampaign) {
@@ -153,6 +157,7 @@ export const POST = async (context) => {
         200,
       );
     }
+    didBeginSend = true;
 
     subject = cleanString(begin.subject) || subject;
     bodyMarkdown = cleanString(begin.body_markdown) || bodyMarkdown;
@@ -227,6 +232,15 @@ export const POST = async (context) => {
       200,
     );
   } catch {
+    if (didBeginSend && UUID_PATTERN.test(campaignId)) {
+      try {
+        await supabase.rpc("waitlist_admin_campaign_mark_failed", {
+          p_campaign_id: campaignId,
+        });
+      } catch {
+        // Ignore fallback errors to preserve the original failure response.
+      }
+    }
     return adminJson({ status: "error", code: "server_error" }, 500);
   }
 };

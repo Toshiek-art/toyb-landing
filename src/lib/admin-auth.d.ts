@@ -2,6 +2,7 @@ import type { APIContext } from "astro";
 
 export interface AdminAuthEnv {
   WAITLIST_ADMIN_TOKEN?: string;
+  ADMIN_ALLOWED_ORIGINS?: string;
 }
 
 export function getAdminRuntimeEnv<T extends object>(

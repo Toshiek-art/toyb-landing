@@ -93,6 +93,8 @@ begin
 end;
 $$;
 
+drop function if exists public.waitlist_admin_get_campaign(uuid);
+
 create or replace function public.waitlist_admin_get_campaign(
   p_campaign_id uuid
 )

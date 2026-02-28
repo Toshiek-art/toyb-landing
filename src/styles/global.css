@@ -490,6 +490,11 @@ a:not(.button):not(.wordmark):not(.logo):not(.nav-link):hover {
   margin-inline: auto;
 }
 
+.waitlist__note {
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--text) 72%, transparent);
+}
+
 .waitlist__form {
   margin-top: var(--space-2);
   display: flex;
@@ -779,6 +784,11 @@ a:not(.button):not(.wordmark):not(.logo):not(.nav-link):hover {
   inset: 1rem;
   border-radius: var(--radius-sm);
   border: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.preview-note {
+  font-size: var(--text-sm);
+  color: color-mix(in srgb, var(--text) 72%, transparent);
 }
 
 .site-footer {

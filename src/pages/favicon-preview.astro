@@ -1,0 +1,133 @@
+---
+import "../styles/theme.css";
+
+export const prerender = true;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>toyb | Favicon preview</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="theme-toyb">
+    <main class="stage" aria-label="Toyb brand mark artboard">
+      <section class="artboard" aria-label="Isolated Toyb mark">
+        <svg
+          class="mark"
+          viewBox="0 0 1000 1000"
+          role="img"
+          aria-label="Toyb brand mark lowercase b"
+        >
+          <rect class="mark__bg" width="1000" height="1000" rx="120" />
+          <text class="mark__letter" x="500" y="760">b</text>
+          <rect
+            class="mark__slice-cut"
+            x="324"
+            y="282"
+            width="232"
+            height="28"
+            rx="14"
+            transform="rotate(-20 440 296)"
+          />
+          <rect
+            class="mark__slice-accent"
+            x="346"
+            y="296"
+            width="184"
+            height="20"
+            rx="10"
+            transform="rotate(-20 438 306)"
+          />
+        </svg>
+      </section>
+    </main>
+
+    <script>
+      const transparent =
+        new URLSearchParams(window.location.search).get("bg") ===
+          "transparent" ||
+        new URLSearchParams(window.location.search).get("transparent") === "1";
+      if (transparent) {
+        document.documentElement.classList.add("is-transparent");
+      }
+    </script>
+  </body>
+</html>
+
+<style>
+  :global(html),
+  :global(body) {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+  }
+
+  :global(body) {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  :global(.is-transparent body) {
+    background: transparent;
+  }
+
+  .stage {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(1rem, 2vw, 2rem);
+  }
+
+  .artboard {
+    width: min(86vmin, 44rem);
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    border-radius: 1.2rem;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 84%, var(--bg));
+  }
+
+  :global(.is-transparent .artboard) {
+    background: transparent;
+  }
+
+  .mark {
+    width: 72%;
+    height: 72%;
+  }
+
+  .mark__bg {
+    fill: none;
+  }
+
+  .mark__letter {
+    fill: #ffffff;
+    font-family:
+      "Space Grotesk",
+      Inter,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      Arial,
+      sans-serif;
+    font-weight: 700;
+    font-size: 760px;
+    letter-spacing: -0.045em;
+    text-anchor: middle;
+  }
+
+  .mark__slice-cut {
+    fill: var(--bg);
+    opacity: 0.98;
+  }
+
+  .mark__slice-accent {
+    fill: var(--accent);
+    opacity: 0.85;
+  }
+</style>

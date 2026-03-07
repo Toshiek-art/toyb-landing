@@ -31,6 +31,44 @@ const creatorBullets = [
   "Build modular worlds that evolve without collapsing under their own complexity.",
   "Make constraints visible so coherence scales with ambition.",
 ];
+
+const previewSlides = [
+  {
+    stage: "structure",
+    label: "Narrative Graph",
+    src: "/images/landing/1920x1080/02b-graph-narrative-no-context-menu.png",
+    srcWebp: "/images/landing/1920x1080/02b-graph-narrative-no-context-menu.webp",
+    alt: "Narrative Graph view showing connections between story entities.",
+  },
+  {
+    stage: "time",
+    label: "Timeline",
+    src: "/images/landing/1920x1080/03-timeline-cinematica.png",
+    srcWebp: "/images/landing/1920x1080/03-timeline-cinematica.webp",
+    alt: "Timeline view mapping events and sequence across the narrative.",
+  },
+  {
+    stage: "analysis",
+    label: "AI Insights",
+    src: "/images/landing/1920x1080/07-ai-insights-panel.png",
+    srcWebp: "/images/landing/1920x1080/07-ai-insights-panel.webp",
+    alt: "AI Insights panel surfacing narrative issues and recommendations.",
+  },
+  {
+    stage: "integrity",
+    label: "Project Health",
+    src: "/images/landing/1920x1080/08-project-health.png",
+    srcWebp: "/images/landing/1920x1080/08-project-health.webp",
+    alt: "Project Health view validating consistency across the system.",
+  },
+] as const;
+
+const workspaceOverview = {
+  src: "/images/landing/1920x1080/01-dashboard-overview.png",
+  srcWebp: "/images/landing/1920x1080/01-dashboard-overview.webp",
+  alt: "Toyb workspace overview showing unified project cockpit with entities, timeline, signals, and health.",
+  caption: "Workspace Overview · unified cockpit",
+} as const;
 ---
 
 <BaseLayout
@@ -161,7 +199,20 @@ const creatorBullets = [
       <ul class="bullets">
         {creatorBullets.map((bullet) => <li>{bullet}</li>)}
       </ul>
-      <aside class="micro-visual" aria-label="System visualization placeholder">
+      <aside class="micro-visual" aria-label="Narrative graph preview">
+        <picture class="micro-visual__picture">
+          <source
+            type="image/webp"
+            srcset="/images/landing/toyb-narrative-graph.webp"
+          />
+          <img
+            class="micro-visual__image"
+            src="/images/landing/toyb-narrative-graph.png"
+            alt="Toyb narrative graph preview"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
       </aside>
     </div>
   </Section>
@@ -172,11 +223,81 @@ const creatorBullets = [
     subtitle="Toyb turns characters, plots, factions, timelines, and worlds into a living relational system — not a folder tree."
   >
     <article class="preview-card">
-      <div
-        class="preview-frame"
-        role="img"
-        aria-label="Toyb relational system preview"
-      >
+      <div class="preview-frame">
+        <div class="preview-carousel" data-preview-carousel>
+          <div class="preview-carousel__viewport" data-preview-viewport>
+            <div class="preview-carousel__track" data-preview-track>
+              {
+                previewSlides.map((slide, index) => (
+                  <figure
+                    class="preview-carousel__slide"
+                    data-preview-slide
+                    data-preview-src={slide.src}
+                    data-preview-src-webp={slide.srcWebp}
+                    data-preview-caption={`${slide.label} · ${slide.stage}`}
+                    aria-hidden={index === 0 ? "false" : "true"}
+                  >
+                    <button
+                      type="button"
+                      class="preview-carousel__image-button"
+                      data-preview-open={index}
+                      aria-label={`Open ${slide.label} screenshot in fullscreen`}
+                      tabindex={index === 0 ? 0 : -1}
+                    >
+                      <picture class="preview-carousel__picture">
+                        <source type="image/webp" srcset={slide.srcWebp} />
+                        <img
+                          class="preview-carousel__image"
+                          src={slide.src}
+                          alt={slide.alt}
+                          loading={index === 0 ? "eager" : "lazy"}
+                          decoding="async"
+                        />
+                      </picture>
+                    </button>
+                    <figcaption class="preview-carousel__caption">
+                      <span>{slide.label}</span>
+                      <small>{slide.stage}</small>
+                    </figcaption>
+                  </figure>
+                ))
+              }
+            </div>
+          </div>
+
+          <div class="preview-carousel__controls" aria-label="Engine preview controls">
+            <button
+              type="button"
+              class="preview-carousel__arrow"
+              data-preview-prev
+              aria-label="Previous slide"
+            >
+              <span aria-hidden="true">&larr;</span>
+            </button>
+            <div class="preview-carousel__dots" role="tablist" aria-label="Choose slide">
+              {
+                previewSlides.map((slide, index) => (
+                  <button
+                    type="button"
+                    class={`preview-carousel__dot ${index === 0 ? "is-active" : ""}`}
+                    data-preview-dot={index}
+                    role="tab"
+                    aria-label={`Go to ${slide.label}`}
+                    aria-selected={index === 0 ? "true" : "false"}
+                  />
+                ))
+              }
+            </div>
+            <button
+              type="button"
+              class="preview-carousel__arrow"
+              data-preview-next
+              aria-label="Next slide"
+            >
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
+        </div>
       </div>
       <p>
         See your universe as a structured network — not scattered notes.<br />
@@ -205,6 +326,101 @@ const creatorBullets = [
           >See how it works</a
         >
       </div>
+    </article>
+
+    <div class="preview-lightbox" data-preview-lightbox hidden aria-hidden="true">
+      <div class="preview-lightbox__scrim" data-preview-close></div>
+      <div
+        class="preview-lightbox__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Inside the engine gallery"
+      >
+        <button
+          type="button"
+          class="preview-lightbox__close"
+          data-preview-close
+          aria-label="Close fullscreen viewer"
+        >
+          <span aria-hidden="true">X</span>
+        </button>
+
+        <button
+          type="button"
+          class="preview-lightbox__nav preview-lightbox__nav--prev"
+          data-preview-lightbox-prev
+          aria-label="Previous screenshot"
+        >
+          <span aria-hidden="true">&larr;</span>
+        </button>
+
+        <figure class="preview-lightbox__figure">
+          <picture class="preview-lightbox__picture">
+            <source
+              type="image/webp"
+              data-preview-lightbox-source
+              srcset=""
+            />
+            <img
+              class="preview-lightbox__image"
+              data-preview-lightbox-image
+              src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
+          <figcaption
+            class="preview-lightbox__caption"
+            data-preview-lightbox-caption
+          >
+            {previewSlides[0].label} · {previewSlides[0].stage}
+          </figcaption>
+        </figure>
+
+        <button
+          type="button"
+          class="preview-lightbox__nav preview-lightbox__nav--next"
+          data-preview-lightbox-next
+          aria-label="Next screenshot"
+        >
+          <span aria-hidden="true">&rarr;</span>
+        </button>
+      </div>
+    </div>
+  </Section>
+
+  <Section
+    id="workspace-overview"
+    title="The Toyb workspace"
+    subtitle="See your universe at a glance."
+  >
+    <article class="workspace-panel">
+      <p class="workspace-panel__copy">
+        Track entities, timelines, narrative signals, and project health from
+        one unified workspace.
+      </p>
+
+      <button
+        type="button"
+        class="workspace-shot"
+        data-workspace-open
+        data-workspace-src={workspaceOverview.src}
+        data-workspace-src-webp={workspaceOverview.srcWebp}
+        data-workspace-caption={workspaceOverview.caption}
+        aria-label="Open Toyb workspace overview in fullscreen"
+      >
+        <picture class="workspace-shot__picture">
+          <source type="image/webp" srcset={workspaceOverview.srcWebp} />
+          <img
+            class="workspace-shot__image"
+            src={workspaceOverview.src}
+            alt={workspaceOverview.alt}
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
+      </button>
     </article>
   </Section>
 
@@ -349,6 +565,308 @@ const creatorBullets = [
             submitButton.disabled = false;
           });
       });
+    }
+
+    const previewCarousel = document.querySelector("[data-preview-carousel]");
+    const previewLightbox = document.querySelector("[data-preview-lightbox]");
+
+    if (previewCarousel instanceof HTMLElement) {
+      if (
+        previewLightbox instanceof HTMLElement &&
+        previewLightbox.parentElement !== document.body
+      ) {
+        // Keep the fixed modal anchored to viewport, not to transformed ancestors.
+        document.body.appendChild(previewLightbox);
+      }
+
+      const trackEl = previewCarousel.querySelector("[data-preview-track]");
+      const viewportEl = previewCarousel.querySelector("[data-preview-viewport]");
+      const slides = Array.from(
+        previewCarousel.querySelectorAll("[data-preview-slide]"),
+      );
+      const prevButton = previewCarousel.querySelector("[data-preview-prev]");
+      const nextButton = previewCarousel.querySelector("[data-preview-next]");
+      const dotButtons = Array.from(
+        previewCarousel.querySelectorAll("[data-preview-dot]"),
+      );
+      const openButtons = Array.from(
+        previewCarousel.querySelectorAll("[data-preview-open]"),
+      );
+      const workspaceOpenButton = document.querySelector(
+        "[data-workspace-open]",
+      );
+
+      const lightboxImage = previewLightbox?.querySelector(
+        "[data-preview-lightbox-image]",
+      );
+      const lightboxSource = previewLightbox?.querySelector(
+        "[data-preview-lightbox-source]",
+      );
+      const lightboxCaption = previewLightbox?.querySelector(
+        "[data-preview-lightbox-caption]",
+      );
+      const lightboxPrevButton = previewLightbox?.querySelector(
+        "[data-preview-lightbox-prev]",
+      );
+      const lightboxNextButton = previewLightbox?.querySelector(
+        "[data-preview-lightbox-next]",
+      );
+      const lightboxCloseButton = previewLightbox?.querySelector(
+        ".preview-lightbox__close",
+      );
+
+      if (trackEl instanceof HTMLElement && slides.length > 0) {
+        const slideCount = slides.length;
+        let activeIndex = 0;
+        let lightboxOpen = false;
+        let lastFocused: HTMLElement | null = null;
+        const lightboxItems: Array<{
+          src: string;
+          srcWebp: string;
+          alt: string;
+          caption: string;
+        }> = [];
+
+        const normalizeIndex = (value: number) =>
+          ((value % slideCount) + slideCount) % slideCount;
+
+        slides.forEach((slide) => {
+          if (!(slide instanceof HTMLElement)) return;
+          const slideImage = slide.querySelector("img");
+          if (!(slideImage instanceof HTMLImageElement)) return;
+          lightboxItems.push({
+            src: slide.dataset.previewSrc ?? slideImage.src,
+            srcWebp: slide.dataset.previewSrcWebp ?? "",
+            alt: slideImage.alt,
+            caption: slide.dataset.previewCaption ?? slideImage.alt,
+          });
+        });
+
+        let workspaceLightboxIndex = -1;
+        if (workspaceOpenButton instanceof HTMLButtonElement) {
+          const workspaceImage = workspaceOpenButton.querySelector("img");
+          if (workspaceImage instanceof HTMLImageElement) {
+            workspaceLightboxIndex = lightboxItems.push({
+              src: workspaceOpenButton.dataset.workspaceSrc ?? workspaceImage.src,
+              srcWebp: workspaceOpenButton.dataset.workspaceSrcWebp ?? "",
+              alt: workspaceImage.alt,
+              caption:
+                workspaceOpenButton.dataset.workspaceCaption ??
+                workspaceImage.alt,
+            }) - 1;
+          }
+        }
+
+        const lightboxCount = lightboxItems.length;
+        const normalizeLightboxIndex = (value: number) => {
+          if (lightboxCount === 0) return 0;
+          return ((value % lightboxCount) + lightboxCount) % lightboxCount;
+        };
+        let lightboxIndex = 0;
+
+        const syncLightbox = () => {
+          if (!lightboxOpen) return;
+          if (!(lightboxImage instanceof HTMLImageElement)) return;
+          if (!(lightboxCaption instanceof HTMLElement)) return;
+          const item = lightboxItems[normalizeLightboxIndex(lightboxIndex)];
+          if (!item) return;
+          lightboxImage.src = item.src;
+          lightboxImage.alt = item.alt;
+          if (lightboxSource instanceof HTMLSourceElement) {
+            lightboxSource.srcset = item.srcWebp;
+          }
+          lightboxCaption.textContent = item.caption;
+        };
+
+        const renderCarousel = () => {
+          trackEl.style.transform = `translateX(-${activeIndex * 100}%)`;
+          slides.forEach((slide, index) => {
+            slide.setAttribute(
+              "aria-hidden",
+              index === activeIndex ? "false" : "true",
+            );
+            if (!(slide instanceof HTMLElement)) return;
+            const button = slide.querySelector("[data-preview-open]");
+            if (button instanceof HTMLButtonElement) {
+              button.tabIndex = index === activeIndex ? 0 : -1;
+            }
+          });
+          dotButtons.forEach((dot, index) => {
+            if (!(dot instanceof HTMLButtonElement)) return;
+            dot.classList.toggle("is-active", index === activeIndex);
+            dot.setAttribute(
+              "aria-selected",
+              index === activeIndex ? "true" : "false",
+            );
+          });
+        };
+
+        const goToSlide = (nextIndex: number) => {
+          activeIndex = normalizeIndex(nextIndex);
+          renderCarousel();
+        };
+
+        const goToLightboxItem = (nextIndex: number) => {
+          if (lightboxCount === 0) return;
+          lightboxIndex = normalizeLightboxIndex(nextIndex);
+          if (lightboxIndex < slideCount) {
+            goToSlide(lightboxIndex);
+          }
+          syncLightbox();
+        };
+
+        const openLightbox = (index: number) => {
+          if (!(previewLightbox instanceof HTMLElement)) return;
+          lastFocused =
+            document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null;
+          if (index < slideCount) {
+            goToSlide(index);
+          }
+          lightboxIndex = normalizeLightboxIndex(index);
+          lightboxOpen = true;
+          previewLightbox.hidden = false;
+          previewLightbox.setAttribute("aria-hidden", "false");
+          document.body.classList.add("preview-lightbox-open");
+          syncLightbox();
+          if (lightboxCloseButton instanceof HTMLButtonElement) {
+            lightboxCloseButton.focus();
+          }
+        };
+
+        const closeLightbox = () => {
+          if (!(previewLightbox instanceof HTMLElement)) return;
+          if (!lightboxOpen) return;
+          lightboxOpen = false;
+          previewLightbox.hidden = true;
+          previewLightbox.setAttribute("aria-hidden", "true");
+          document.body.classList.remove("preview-lightbox-open");
+          if (lastFocused instanceof HTMLElement) {
+            lastFocused.focus();
+          }
+        };
+
+        if (prevButton instanceof HTMLButtonElement) {
+          prevButton.addEventListener("click", () => {
+            goToSlide(activeIndex - 1);
+          });
+        }
+
+        if (nextButton instanceof HTMLButtonElement) {
+          nextButton.addEventListener("click", () => {
+            goToSlide(activeIndex + 1);
+          });
+        }
+
+        dotButtons.forEach((dot) => {
+          if (!(dot instanceof HTMLButtonElement)) return;
+          dot.addEventListener("click", () => {
+            const value = Number.parseInt(dot.dataset.previewDot ?? "", 10);
+            if (Number.isNaN(value)) return;
+            goToSlide(value);
+          });
+        });
+
+        openButtons.forEach((button) => {
+          if (!(button instanceof HTMLButtonElement)) return;
+          button.addEventListener("click", () => {
+            const value = Number.parseInt(button.dataset.previewOpen ?? "", 10);
+            if (Number.isNaN(value)) return;
+            openLightbox(value);
+          });
+        });
+
+        if (
+          workspaceOpenButton instanceof HTMLButtonElement &&
+          workspaceLightboxIndex >= 0
+        ) {
+          workspaceOpenButton.addEventListener("click", () => {
+            openLightbox(workspaceLightboxIndex);
+          });
+        }
+
+        if (lightboxPrevButton instanceof HTMLButtonElement) {
+          lightboxPrevButton.addEventListener("click", () => {
+            goToLightboxItem(lightboxIndex - 1);
+          });
+        }
+
+        if (lightboxNextButton instanceof HTMLButtonElement) {
+          lightboxNextButton.addEventListener("click", () => {
+            goToLightboxItem(lightboxIndex + 1);
+          });
+        }
+
+        if (previewLightbox instanceof HTMLElement) {
+          previewLightbox.addEventListener("click", (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+            if (target.closest("[data-preview-close]")) {
+              closeLightbox();
+            }
+          });
+        }
+
+        document.addEventListener("keydown", (event) => {
+          if (!lightboxOpen) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            closeLightbox();
+            return;
+          }
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            goToLightboxItem(lightboxIndex - 1);
+            return;
+          }
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            goToLightboxItem(lightboxIndex + 1);
+          }
+        });
+
+        if (viewportEl instanceof HTMLElement) {
+          let pointerActive = false;
+          let pointerId = -1;
+          let startX = 0;
+          let deltaX = 0;
+          const threshold = 48;
+
+          const finishSwipe = () => {
+            if (!pointerActive) return;
+            if (Math.abs(deltaX) >= threshold) {
+              goToSlide(activeIndex + (deltaX > 0 ? -1 : 1));
+            }
+            pointerActive = false;
+            pointerId = -1;
+            startX = 0;
+            deltaX = 0;
+          };
+
+          viewportEl.addEventListener("pointerdown", (event) => {
+            if (event.pointerType !== "touch") return;
+            pointerActive = true;
+            pointerId = event.pointerId;
+            startX = event.clientX;
+            deltaX = 0;
+          });
+
+          viewportEl.addEventListener("pointermove", (event) => {
+            if (!pointerActive || event.pointerId !== pointerId) return;
+            deltaX = event.clientX - startX;
+          });
+
+          viewportEl.addEventListener("pointerup", (event) => {
+            if (event.pointerId !== pointerId) return;
+            finishSwipe();
+          });
+
+          viewportEl.addEventListener("pointercancel", finishSwipe);
+        }
+
+        renderCarousel();
+      }
     }
   </script>
   {

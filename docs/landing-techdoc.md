@@ -1,199 +1,273 @@
-# Toyb Landing TechDoc
+# Toyb TechDoc (stato attuale)
 
-Documento tecnico di stato della landing `toyb.space` con tutto ciò che è incluso al momento.
+Ultimo aggiornamento: **2026-03-07**
+
+Documento tecnico di stato per il progetto `toyb.space` (landing, pagine legali, waitlist backend e admin console).
 
 ## 1) Scope
 
-- Framework: Astro
-- Runtime deploy: Cloudflare (`@astrojs/cloudflare`)
-- Obiettivo: landing marketing + pagine legali + conversione waitlist con hardening sicurezza
+- Framework: Astro 5
+- Runtime deploy: Cloudflare Pages/Workers (`@astrojs/cloudflare`)
+- Output Astro: `server`
+- Obiettivo: sito marketing + backend waitlist + console admin interna
 
 ## 2) Stack
 
-- Astro 5 + TypeScript
-- CSS vanilla (design tokens + global styles)
+- Astro + TypeScript
+- CSS vanilla (`src/styles/theme.css` + `src/styles/global.css`)
 - ESLint + Prettier
 - `@astrojs/sitemap`
-- Cloudflare adapter
-- Supabase (`@supabase/supabase-js`) per waitlist
-- Resend via HTTP API per welcome email
-- Playwright + axe-core per test a11y
+- Supabase (`@supabase/supabase-js`) per storage e RPC
+- Resend API (o provider `mock`) per email
+- Playwright + axe-core per smoke a11y
 
 ## 3) Struttura progetto (principale)
 
-- `src/layouts/BaseLayout.astro`: shell globale, meta SEO/OG, JSON-LD, skip-link, reveal script
-- `src/components/`: componenti UI riusabili (`Navbar`, `Hero`, `FeatureGrid`, `Section`, `Footer`, `Logo`, `ConsentBanner`)
-- `src/pages/`: home, pagine legali, `logo-lab`, API route waitlist, `robots.txt`
-- `src/styles/theme.css`: token design system
-- `src/styles/global.css`: reset, tipografia, layout, component styles, motion/accessibility
-- `src/lib/analytics.ts`: stub tracking (`noop`)
-- `src/lib/email.ts`: invio email (Resend default, SMTP fallback dev-only)
-- `supabase/migrations/`: schema + hardening DB + RPC
-- `scripts/test-a11y.mjs`: a11y smoke via axe
-- `scripts/test-waitlist.mjs`: waitlist smoke test API
+- `src/layouts/BaseLayout.astro`: shell globale, SEO/OG/Twitter meta, JSON-LD, favicon/manifest, skip-link, reveal script, tracking click CTA
+- `src/components/`: UI condivisa (`Navbar`, `Hero`, `Section`, `FeatureGrid`, `Footer`, `Logo`, `ConsentBanner`)
+- `src/pages/`: landing, legal pages, admin pages, route API, utility pages (`logo-lab`, `favicon-preview`, `robots.txt`)
+- `src/lib/`: servizi waitlist/unsubscribe/admin/campaign/email
+- `src/styles/`: design tokens + stili globali
+- `scripts/`: test a11y/waitlist/email
+- `supabase/migrations/`: schema e hardening DB
+- `public/`: asset statici, screenshot landing, set favicon
 
-## 4) Pagine incluse
+## 4) Route map
 
-- `/` landing principale
+### Pagine pubbliche
+
+- `/`
 - `/privacy`
 - `/accessibility`
 - `/terms`
 - `/imprint`
-- `/logo-lab` (non in nav)
+- `/unsubscribe`
+- `/logo-lab`
+- `/favicon-preview` (noindex)
 - `/robots.txt`
-- `/api/waitlist` (server)
+
+### Pagine admin (SSR, noindex)
+
+- `/admin`
+- `/admin/waitlist`
+- `/admin/campaigns`
+- `/admin/campaigns/:id`
+
+### API
+
+- `POST /api/waitlist`
+- `OPTIONS /api/waitlist`
+- `POST /api/waitlist-test`
+- `GET|POST /api/unsubscribe`
+- `GET /api/admin/stats`
+- `GET /api/admin/waitlist`
+- `POST /api/admin/beta/invite`
+- `POST /api/admin/beta/set-active`
+- `POST /api/admin/campaigns/preview`
+- `POST /api/admin/campaigns/send`
+- `GET /api/admin/campaigns/:id`
+- `GET /api/admin/campaigns/:id/recipients`
 
 ## 5) Landing UI (home)
 
-### Sezioni
+### Sezioni attuali
 
-- Hero con headline: `Build universes. Break complexity.`
-- Founder Note (sotto Hero)
-- Waitlist block (form email)
-- Why Toyb (3 card)
-- Built for creators
-- Preview + CTA
+- Hero
+- Founder note
+- Waitlist
+- Why Toyb (3 feature tiles)
+- Built for system thinkers.
+- Inside the engine. (mini-carousel narrativo)
+- The Toyb workspace (overview screenshot singolo)
 
-### Componentizzazione
+### Inside the engine: carousel narrativo
 
-- Navbar minimal con logo `toyb` e CTA
-- Hero separato con markup semantico e wrapping controllato del titolo
-- Section + FeatureGrid riusabili
-- Footer con link legali
+- 4 slide in ordine fisso:
+  1. Narrative Graph
+  2. Timeline
+  3. AI Insights
+  4. Project Health
+- Navigazione manuale (frecce + dots), no autoplay
+- Swipe touch su mobile (`pointer` events)
+- Transizione fluida via `transform`
+- `aspect-ratio: 16 / 9` per contenimento e riduzione layout shift
+- Caption discreta (label + stage)
+
+### Lightbox condivisa
+
+- Apertura clic su slide del carousel
+- Apertura anche dal blocco `The Toyb workspace` (stessa lightbox, stesso controller)
+- Chiusura con:
+  - bottone `X`
+  - click su scrim
+  - tasto `Esc`
+- Navigazione in lightbox:
+  - frecce prev/next UI
+  - tasti freccia tastiera
+- Focus handling:
+  - focus al pulsante close in apertura
+  - restore del focus elemento originario in chiusura
+- Scroll lock body in apertura (`.preview-lightbox-open { overflow: hidden; }`)
+- Modal spostata in `document.body` a runtime per evitare offset da ancestor trasformati
+
+### Workspace section
+
+- Screenshot singolo, grande, non in carousel
+- Stile statico coerente con screenshot grandi
+- Nessun hover dedicato di bordo (niente border-shift su `.workspace-shot`)
+- Click-to-zoom via lightbox condivisa
 
 ## 6) Design system e stile
 
-Token centralizzati in `src/styles/theme.css`:
+Token in `src/styles/theme.css`:
 
-- Colori: `--bg`, `--surface`, `--text`, `--muted`, `--border`, `--accent`
-- Tipografia: scale + line-height
-- Spaziature: `--space-*`
-- Radius, shadow, blur, max-width
+- Palette dark + accento ciano (`--accent: #00e5ff`)
+- Scale tipografica, spaziature, radius, shadow
 
-Direzione visuale implementata:
+Regole UI rilevanti:
 
-- Tema dark/minimal autorevole
-- Accento unico ciano `#00E5FF`
-- Wordmark ribelle controllato (`Logo` variante `slice`/`bar`)
-- Hero con aura animata + frattura tipografica su “Break”
-- Motion sobria e rispettosa di `prefers-reduced-motion`
+- `.feature-card` (Why Toyb): mantiene micro-lift hover/focus (`translateY`, border/glow)
+- `.workspace-shot`: statico (no hover effect dedicato)
+- Screenshot carousel/lightbox con `object-fit: contain` per leggibilità
 
-## 7) Accessibilità implementata
+## 7) Favicon e brand mark
 
-- Skip link funzionante
-- Focus ring `:focus-visible` su elementi interattivi
-- Contrasto alto (palette calibrata AA)
-- Landmark semantici (`header`, `main`, `footer`, `nav`)
-- Reveal animations disabilitate con `prefers-reduced-motion: reduce`
-- Test automatici axe-core su route principali (`scripts/test-a11y.mjs`)
+### Favicon in uso (root `public/`)
 
-Riferimenti in documentazione:
+- `favicon.ico`
+- `favicon-16x16.png`
+- `favicon-32x32.png`
+- `apple-touch-icon.png`
+- `android-chrome-192x192.png`
+- `android-chrome-512x512.png`
+- `site.webmanifest`
+- `og-favicon.png` (default OG image nel layout)
 
-- EN 301 549 / WCAG 2.1 A/AA (baseline tecnica, nessun claim legale)
+### Origine set favicon
+
+- `public/favicons_complete_set/`
+  - `favicons_transparent/`
+  - `favicons_dark_bg/`
+  - `favicons_inverted_white_bg/`
+  - `favicons_black_transparent/`
+
+### Route brand-artboard
+
+- `/favicon-preview`: preview del solo mark `b` con accento diagonale
+- Supporta background trasparente via query:
+  - `?bg=transparent`
+  - `?transparent=1`
 
 ## 8) SEO e metadata
 
 In `BaseLayout`:
 
 - Canonical URL
-- Meta description
-- Open Graph + Twitter card
-- JSON-LD `SoftwareApplication` (Toyb)
-- Sitemap via `@astrojs/sitemap`
-- `robots.txt` generato
+- Meta description + robots
+- Open Graph (`og:type`, `og:title`, `og:description`, `og:url`, `og:image`)
+- Twitter card
+- JSON-LD `SoftwareApplication`
+- Favicon multipli + `apple-touch-icon`
+- `<link rel="manifest" href="/site.webmanifest">`
+- `<meta name="theme-color" content="#0b0f14">`
 
-## 9) Consent e analytics
+Indicizzazione:
 
-- `ConsentBanner` presente ma disattivato di default
-- Flag: `PUBLIC_ENABLE_CONSENT_BANNER=true`
-- Scelta salvata in localStorage (`accepted`/`rejected`)
-- `src/lib/analytics.ts` è stub `track(...)` (nessun tracking reale attivo)
+- Route admin marcate `noindex,nofollow`
+- `robots.txt` disallow per `/admin` e `/api/admin`
+- Sitemap generata con filtro che esclude path `/admin`
 
-## 10) Waitlist backend (attuale)
+## 9) Waitlist backend
 
-### Frontend
+### Flusso
 
-- Form su home con:
-  - email
-  - honeypot `company`
-  - Turnstile opzionale (feature-flag)
-- Submit via `fetch` a `POST /api/waitlist`
-- Messaggi UX:
-  - nuovo utente
-  - già iscritto
-  - errore generico
+1. Form home invia JSON a `POST /api/waitlist`
+2. API valida payload e origine
+3. Upsert via RPC Supabase `waitlist_upsert`
+4. Invio email benvenuto con link unsubscribe firmato
 
-### API route (`src/pages/api/waitlist.ts`)
+### Validazioni e controlli attivi
 
-Controlli attivi:
+- CORS allowlist (`WAITLIST_ALLOWED_ORIGINS`, fallback include localhost)
+- `Content-Type` JSON richiesto
+- Body limit: 2KB
+- Honeypot `company`
+- Validazione email
+- Consensi richiesti:
+  - `age_confirmed === true`
+  - `privacy_accepted === true`
+  - `marketing_consent` boolean
+  - `privacy_version` obbligatoria
+- Rate limiting soft in-memory per IP hash (SHA-256 + salt)
 
-- CORS strict + allowlist origin:
-  - `https://toyb.space`
-  - `https://www.toyb.space`
-  - `https://*.pages.dev`
-- Metodi ammessi: `POST`, `OPTIONS`
-- `Content-Type` richiesto: `application/json`
-- Limite payload: 2KB
-- Rate limit soft in-memory per IP/UA
-- Honeypot anti-bot
-- Turnstile verify opzionale (`siteverify`)
-- Error hygiene (codici generici)
-- Log privacy-safe:
-  - `request_id`
-  - `timestamp`
-  - `ip_hash_prefix`
-  - `email_hash_prefix`
+### Email
 
-### Persistenza Supabase (hardening)
+- Provider selezionato da `EMAIL_PROVIDER` (`mock` o `resend`)
+- Fallback automatico:
+  - con `RESEND_API_KEY` presente tende a `resend`
+  - in dev senza key usa `mock`
+- Oggetto dinamico:
+  - con consenso marketing: `Welcome to Toyb (marketing enabled)`
+  - senza consenso marketing: `Welcome to Toyb`
 
-Migrazioni:
+### Unsubscribe
 
-- `20260223184000_create_waitlist.sql` (tabella base)
-- `20260223200500_waitlist_rpc_hardening.sql` (hardening)
+- Endpoint `GET|POST /api/unsubscribe`
+- Firma HMAC (`WAITLIST_UNSUBSCRIBE_SECRET`) con token time-bound
+- Applicazione unsubscribe via RPC `waitlist_apply_unsubscribe`
 
-Hardening DB incluso:
+### Nota Turnstile (stato corrente)
 
-- Constraint su email/source/user_agent/ip_hash
-- Unique index su `lower(email)` (dedup case-insensitive)
-- RLS attiva su `waitlist`
-- Accesso diretto tabella negato ad `anon/authenticated`
-- Funzione RPC `insert_waitlist(...)` con `SECURITY DEFINER`
-- API usa `SUPABASE_ANON_KEY` + RPC (no service-role key in runtime app)
+- Frontend può mostrare widget Turnstile (`WAITLIST_TURNSTILE_ENABLED` + `TURNSTILE_SITE_KEY`)
+- Il token viene inviato dal client ma **non è verificato server-side** nell’attuale implementazione di `POST /api/waitlist`
 
-### Email welcome
+## 10) Admin console e campagne
 
-- Provider default: Resend (HTTP, compatibile Cloudflare)
-- Subject: `Welcome to the Trybe.`
-- Body breve brand-consistent
-- SMTP fallback presente ma bloccata fuori da `NODE_ENV=development`
+### Auth admin
 
-## 11) Turnstile (feature-flag)
+- Header richiesto: `Authorization: Bearer <WAITLIST_ADMIN_TOKEN>`
+- Same-origin enforcement con `ADMIN_ALLOWED_ORIGINS`
+- Confronto token timing-safe
 
-Variabili:
+### Funzioni admin
 
-- `WAITLIST_TURNSTILE_ENABLED` (`true|false`, default `false`)
-- `TURNSTILE_SITE_KEY` (public)
-- `TURNSTILE_SECRET_KEY` (server)
+- Dashboard statistiche waitlist/beta
+- Listing waitlist con filtri (marketing, source, beta, subscribed_only, date range)
+- Beta invite e toggle beta-active
+- Campaign preview recipient
+- Campaign send con tracciamento stato recipient (sent/failed)
+- Campaign detail + paginazione recipients
 
-Comportamento:
+### Safety campaigns
 
-- Se flag `false`: nessun widget, nessun script Turnstile
-- Se flag `true`: widget renderizzato, token inviato in payload, verifica server-side
-- Fail verify => `403 { ok:false, error:"bot_suspected" }`
+- Segmento campagne forzato lato server a:
+  - `marketing_only = true`
+  - `subscribed_only = true`
+- Include link unsubscribe firmato in ogni email campagna
 
-## 12) CI/CD e deploy
+## 11) Migrations Supabase presenti
+
+- `20260223184000_create_waitlist.sql`
+- `20260223200500_waitlist_rpc_hardening.sql`
+- `20260226153000_waitlist_consents.sql`
+- `20260226174000_waitlist_checkbox_consents.sql`
+- `20260227190000_waitlist_refactor.sql`
+- `20260227194000_admin_console.sql`
+- `20260227203000_campaign_send_guard.sql`
+- `20260228164000_campaign_retry_failed.sql`
+
+## 12) CI/CD
 
 ### CI (`.github/workflows/ci.yml`)
-
-Esegue su push/PR:
 
 1. `npm ci`
 2. `npm run lint`
 3. `npm run format`
 4. `npm run typecheck`
-5. `npm run build`
-6. install Chromium Playwright
-7. `npm run test:a11y`
+5. `npm run test`
+6. `npm run build`
+7. `npx playwright install --with-deps chromium`
+8. `npm run test:a11y`
 
 ### Deploy (`.github/workflows/deploy.yml`)
 
@@ -201,38 +275,41 @@ Esegue su push/PR:
 - Build Astro
 - Deploy `dist` su Cloudflare Pages via `wrangler-action`
 
-## 13) Test script utili
+## 13) Script utili
 
-- A11y: `npm run test:a11y`
-- Waitlist smoke:
-  - `node scripts/test-waitlist.mjs`
-  - env utili:
-    - `BASE_URL` (default `http://localhost:4321`)
-    - `WAITLIST_TEST_ORIGIN` (default `https://toyb.space`)
-    - `TURNSTILE_TOKEN` (se Turnstile attivo)
+- `npm run dev`
+- `npm run check`
+- `npm run test`
+- `npm run test:waitlist`
+- `npm run test:email`
+- `npm run test:a11y`
+- `npm run deploy`
 
-## 14) Env vars (attuali)
+## 14) Env vars (allineate al codice)
 
-Public/client:
+### Public/client
 
 - `PUBLIC_SITE_URL`
 - `PUBLIC_ENABLE_CONSENT_BANNER` (opzionale)
-- `TURNSTILE_SITE_KEY` (solo quando Turnstile attivo)
+- `WAITLIST_TURNSTILE_ENABLED` (opzionale, UI widget)
+- `TURNSTILE_SITE_KEY` (opzionale, UI widget)
 
-Server-only:
+### Server-only
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `RESEND_API_KEY`
 - `WAITLIST_FROM`
 - `WAITLIST_IP_SALT`
-- `WAITLIST_EMAIL_PROVIDER`
-- `WAITLIST_TURNSTILE_ENABLED`
-- `TURNSTILE_SECRET_KEY`
-- `SMTP_*` (solo fallback dev)
+- `WAITLIST_ALLOWED_ORIGINS`
+- `WAITLIST_UNSUBSCRIBE_SECRET`
+- `WAITLIST_UNSUBSCRIBE_BASE_URL`
+- `WAITLIST_ADMIN_TOKEN`
+- `ADMIN_ALLOWED_ORIGINS`
+- `EMAIL_PROVIDER` (`mock|resend`)
+- `RESEND_API_KEY` (necessaria con `EMAIL_PROVIDER=resend`)
 
 ## 15) Note operative
 
-- Per waitlist in produzione servono entrambe le migration Supabase.
-- Per invio email con dominio custom va verificato sender/domain in Resend.
-- Lo smoke test waitlist fallisce se il server locale non è avviato o non raggiungibile.
+- Dopo update favicon/manifest può servire hard refresh per invalidare cache browser.
+- Le route admin sono escluse da robots/sitemap ma restano raggiungibili con URL diretto.
+- Se si vuole enforcement anti-bot reale, va aggiunta verifica server-side Turnstile in `POST /api/waitlist`.

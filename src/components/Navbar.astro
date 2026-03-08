@@ -5,6 +5,12 @@ const links = [
   { href: "/#why-toyb", label: "Why Toyb" },
   { href: "/#creators", label: "Built for creators" },
   { href: "/#preview", label: "Preview" },
+  {
+    href: "/#waitlist-title",
+    label: "Get early access",
+    emphasis: true,
+    track: "cta_nav_early_access",
+  },
 ];
 ---
 
@@ -16,7 +22,11 @@ const links = [
       {
         links.map((link) => (
           <li>
-            <a class="nav-link" href={link.href}>
+            <a
+              class:list={["nav-link", link.emphasis && "nav-link--highlight"]}
+              href={link.href}
+              data-track={link.track}
+            >
               {link.label}
             </a>
           </li>
@@ -24,12 +34,4 @@ const links = [
       }
     </ul>
   </nav>
-
-  <a
-    class="button button-primary"
-    href="/#waitlist-title"
-    data-track="cta_nav_early_access"
-  >
-    Get early access
-  </a>
 </div>

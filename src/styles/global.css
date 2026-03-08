@@ -260,6 +260,11 @@ a:not(.button):not(.wordmark):not(.logo):not(.nav-link):hover {
   font-size: var(--text-sm);
 }
 
+.nav-link--highlight {
+  color: color-mix(in srgb, var(--text) 94%, var(--accent) 6%);
+  font-weight: 600;
+}
+
 .nav-link:hover {
   color: var(--text);
 }

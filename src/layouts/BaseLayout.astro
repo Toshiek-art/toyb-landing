@@ -17,7 +17,7 @@ const {
   title = "toyb | Build universes. Break complexity.",
   description = "Toyb is a modular worldbuilding engine for creators who think in systems.",
   canonical,
-  ogImage = "/og-favicon.png",
+  ogImage = "/icons/app/og-favicon.png",
   lang = "en",
   robots = "index,follow",
 } = Astro.props;
@@ -70,13 +70,29 @@ const enableConsentBanner =
       set:html={JSON.stringify(softwareApplicationLd)}
     />
 
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" href="/icons/app/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="/icons/app/favicon-512x512.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/icons/app/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/icons/app/favicon-16x16.png"
+    />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="/apple-touch-icon.png"
+      href="/icons/app/apple-touch-icon.png"
     />
     <link rel="manifest" href="/site.webmanifest" />
     <title>{title}</title>

@@ -14,10 +14,25 @@ const links = [
 ];
 ---
 
-<div class="navbar layout-shell" data-reveal>
+<div class="navbar layout-shell" data-reveal data-nav-root>
   <Logo size="sm" asLink={false} />
 
-  <nav aria-label="Primary">
+  <button
+    class="nav-toggle"
+    type="button"
+    aria-expanded="false"
+    aria-controls="primary-nav-menu"
+    data-nav-toggle
+  >
+    <span class="sr-only">Toggle navigation</span>
+    <span class="nav-toggle__icon" aria-hidden="true">
+      <span class="nav-toggle__line"></span>
+      <span class="nav-toggle__line"></span>
+      <span class="nav-toggle__line"></span>
+    </span>
+  </button>
+
+  <nav id="primary-nav-menu" class="navbar-menu" aria-label="Primary" data-nav-menu>
     <ul class="nav-links">
       {
         links.map((link) => (
@@ -35,3 +50,58 @@ const links = [
     </ul>
   </nav>
 </div>
+
+<script>
+  const navRoot = document.querySelector("[data-nav-root]");
+  if (navRoot instanceof HTMLElement) {
+    const toggle = navRoot.querySelector("[data-nav-toggle]");
+    const menu = navRoot.querySelector("[data-nav-menu]");
+    if (toggle instanceof HTMLButtonElement && menu instanceof HTMLElement) {
+      const mobileMq = window.matchMedia("(max-width: 47.99rem)");
+
+      const applyState = (open: boolean) => {
+        navRoot.setAttribute("data-nav-open", open ? "true" : "false");
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      };
+
+      const syncForViewport = () => {
+        navRoot.setAttribute("data-nav-enhanced", "true");
+        if (mobileMq.matches) {
+          const isOpen = navRoot.getAttribute("data-nav-open") === "true";
+          applyState(isOpen);
+        } else {
+          applyState(false);
+        }
+      };
+
+      applyState(false);
+      syncForViewport();
+
+      toggle.addEventListener("click", () => {
+        const isOpen = navRoot.getAttribute("data-nav-open") === "true";
+        applyState(!isOpen);
+      });
+
+      menu.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => applyState(false));
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") applyState(false);
+      });
+
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (
+          mobileMq.matches &&
+          target instanceof Node &&
+          !navRoot.contains(target)
+        ) {
+          applyState(false);
+        }
+      });
+
+      mobileMq.addEventListener("change", syncForViewport);
+    }
+  }
+</script>

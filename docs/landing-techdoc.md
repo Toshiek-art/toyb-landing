@@ -141,7 +141,7 @@ Regole UI rilevanti:
 - `android-chrome-192x192.png`
 - `android-chrome-512x512.png`
 - `site.webmanifest`
-- `og-favicon.png` (default OG image nel layout)
+- `images/assets/toyb-social-cover.png` (default OG image nel layout)
 
 ### Origine set favicon
 

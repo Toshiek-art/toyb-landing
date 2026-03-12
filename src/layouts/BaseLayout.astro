@@ -17,7 +17,7 @@ const {
   title = "toyb | Build universes. Break complexity.",
   description = "Toyb is a modular worldbuilding engine for creators who think in systems.",
   canonical,
-  ogImage = "/icons/app/og-favicon.png",
+  ogImage = "/images/assets/toyb-social-cover.png",
   lang = "en",
   robots = "index,follow",
 } = Astro.props;
@@ -26,6 +26,10 @@ const siteOrigin = Astro.site?.toString() ?? "https://toyb.space/";
 const canonicalUrl =
   canonical ?? new URL(Astro.url.pathname, siteOrigin).toString();
 const ogImageUrl = new URL(ogImage, siteOrigin).toString();
+const defaultOgImage = ogImage === "/images/assets/toyb-social-cover.png";
+const ogImageWidth = defaultOgImage ? "851" : undefined;
+const ogImageHeight = defaultOgImage ? "315" : undefined;
+const ogImageAlt = "Toyb social cover";
 
 const softwareApplicationLd = {
   "@context": "https://schema.org",
@@ -58,11 +62,17 @@ const enableConsentBanner =
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={ogImageUrl} />
+    {ogImageWidth && <meta property="og:image:width" content={ogImageWidth} />}
+    {ogImageHeight && (
+      <meta property="og:image:height" content={ogImageHeight} />
+    )}
+    <meta property="og:image:alt" content={ogImageAlt} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
 
     <script
       type="application/ld+json"

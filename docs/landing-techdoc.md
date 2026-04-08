@@ -298,6 +298,8 @@ Note:
 - The consent banner is enabled by default on public pages through
   `src/layouts/BaseLayout.astro`.
 - Disable it only on internal/admin pages with `enableConsentBanner={false}`.
+- `src/middleware.ts` redirects `www.toyb.space` to `toyb.space` so the
+  canonical host stays consistent with the metadata and sitemap.
 
 ### Server-only
 

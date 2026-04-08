@@ -321,8 +321,9 @@ Workflow: `.github/workflows/deploy.yml`
 In Cloudflare Pages project settings:
 
 1. Add custom domain `toyb.space`.
-2. Configure DNS records in Cloudflare.
-3. Ensure HTTPS is active.
+2. Configure `www.toyb.space` as an alias or redirect to `toyb.space`.
+3. Configure DNS records in Cloudflare.
+4. Ensure HTTPS is active.
 
 ### Local one-command deploy
 

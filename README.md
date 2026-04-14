@@ -316,6 +316,26 @@ Workflow: `.github/workflows/deploy.yml`
 
 - `CLOUDFLARE_PAGES_PROJECT` (example: `toyb`)
 
+## Preview deploys
+
+Workflow: `.github/workflows/deploy-preview.yml`
+
+This workflow deploys `codex/**` branches to a separate Cloudflare Pages project so you can test a fix without overwriting production.
+
+### Required GitHub secrets
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+### Required GitHub variable
+
+- `CLOUDFLARE_PREVIEW_PAGES_PROJECT` (example: `toyb-preview`)
+
+### Notes
+
+- Preview deploys still use whatever Cloudflare runtime variables you configure for that project.
+- If you want full isolation from production data, duplicate the Supabase and email variables into the preview project too.
+
 ### Domain setup (`toyb.space`)
 
 In Cloudflare Pages project settings:

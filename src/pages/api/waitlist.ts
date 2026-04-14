@@ -5,6 +5,7 @@ import {
   type WaitlistEmailEnv,
 } from "../../lib/email";
 import { handleWaitlistSubmission } from "../../lib/waitlist-service.js";
+import { upsertWaitlistWithCompatibility } from "../../lib/waitlist-supabase.js";
 
 export const prerender = false;
 
@@ -231,27 +232,10 @@ export const POST: APIRoute = async (context) => {
     deps: {
       rateLimitStore,
       upsertWaitlist: async (input) => {
-        const { data, error } = await supabase.rpc("waitlist_upsert", {
-          p_email: input.email,
-          p_source: input.source,
-          p_user_agent: input.userAgent,
-          p_ip_hash: input.ipHash,
-          p_age_confirmed: true,
-          p_privacy_accepted: true,
-          p_marketing_consent: input.marketingConsent,
-          p_privacy_version: input.privacyVersion,
+        return upsertWaitlistWithCompatibility({
+          supabase,
+          input,
         });
-
-        if (error) throw error;
-
-        const row = Array.isArray(data)
-          ? (data[0] as { inserted?: boolean; updated?: boolean } | undefined)
-          : undefined;
-
-        return {
-          inserted: row?.inserted === true,
-          updated: row?.updated === true,
-        };
       },
       sendEmail: async (input) => {
         const response = await sendWaitlistEmail({

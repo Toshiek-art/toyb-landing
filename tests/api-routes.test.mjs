@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { handleUnsubscribeRequest } from "../src/lib/unsubscribe-service.js";
 import { handleWaitlistSubmission } from "../src/lib/waitlist-service.js";
+import {
+  upsertWaitlistWithCompatibility,
+} from "../src/lib/waitlist-supabase.js";
 
 const baseEnv = {
   WAITLIST_ALLOWED_ORIGINS: "https://toyb.space",
@@ -100,6 +103,53 @@ test("waitlist handler rejects missing required consents", async () => {
   assert.equal(result.status, 400);
   assert.equal(result.body.status, "error");
   assert.equal(result.body.code, "age_required");
+});
+
+test("waitlist Supabase helper falls back to insert_waitlist when waitlist_upsert is unavailable", async () => {
+  const calls = [];
+  const supabase = {
+    rpc: async (fn, params) => {
+      calls.push({ fn, params });
+
+      if (fn === "waitlist_upsert") {
+        return {
+          data: null,
+          error: {
+            code: "PGRST202",
+            message: "Could not find the function public.waitlist_upsert",
+          },
+        };
+      }
+
+      if (fn === "insert_waitlist") {
+        return {
+          data: [{ already_joined: false, recorded_marketing_consent: false }],
+          error: null,
+        };
+      }
+
+      return {
+        data: null,
+        error: { code: "PGRST202", message: "Could not find the function" },
+      };
+    },
+  };
+
+  const result = await upsertWaitlistWithCompatibility({
+    supabase,
+    input: {
+      email: "api-test@example.com",
+      source: "api-test",
+      userAgent: "test-suite",
+      ipHash: "a".repeat(64),
+      marketingConsent: false,
+      privacyVersion: "2026-04-08",
+    },
+  });
+
+  assert.deepEqual(result, { inserted: true, updated: false });
+  assert.equal(calls[0]?.fn, "waitlist_upsert");
+  assert.equal(calls[1]?.fn, "insert_waitlist");
 });
 
 test("unsubscribe handler rejects invalid signature", async () => {

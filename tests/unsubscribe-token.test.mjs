@@ -7,14 +7,14 @@ import {
   verifyUnsubscribeToken,
 } from "../src/lib/unsubscribe-token.js";
 
-test("verifyUnsubscribeToken accepts valid signature", () => {
+test("verifyUnsubscribeToken accepts valid signature", async () => {
   const secret = "token-test-secret";
   const email = "user@example.com";
   const scope = "marketing";
   const ts = 1_700_000_000;
-  const sig = signUnsubscribeToken({ secret, email, scope, ts });
+  const sig = await signUnsubscribeToken({ secret, email, scope, ts });
 
-  const result = verifyUnsubscribeToken({
+  const result = await verifyUnsubscribeToken({
     secret,
     email,
     scope,
@@ -31,8 +31,8 @@ test("verifyUnsubscribeToken accepts valid signature", () => {
   }
 });
 
-test("verifyUnsubscribeToken rejects invalid signature", () => {
-  const result = verifyUnsubscribeToken({
+test("verifyUnsubscribeToken rejects invalid signature", async () => {
+  const result = await verifyUnsubscribeToken({
     secret: "token-test-secret",
     email: "user@example.com",
     scope: "marketing",
@@ -47,14 +47,14 @@ test("verifyUnsubscribeToken rejects invalid signature", () => {
   }
 });
 
-test("verifyUnsubscribeToken rejects expired signature", () => {
+test("verifyUnsubscribeToken rejects expired signature", async () => {
   const secret = "token-test-secret";
   const email = "user@example.com";
   const scope = "all";
   const ts = 1_700_000_000;
-  const sig = signUnsubscribeToken({ secret, email, scope, ts });
+  const sig = await signUnsubscribeToken({ secret, email, scope, ts });
 
-  const result = verifyUnsubscribeToken({
+  const result = await verifyUnsubscribeToken({
     secret,
     email,
     scope,
@@ -69,10 +69,9 @@ test("verifyUnsubscribeToken rejects expired signature", () => {
   }
 });
 
-test("timingSafeHexEqual compares signatures safely", () => {
-  const secret = "token-test-secret";
-  const sig = signUnsubscribeToken({
-    secret,
+test("timingSafeHexEqual compares signatures safely", async () => {
+  const sig = await signUnsubscribeToken({
+    secret: "token-test-secret",
     email: "user@example.com",
     scope: "marketing",
     ts: 1_700_000_000,
@@ -82,8 +81,8 @@ test("timingSafeHexEqual compares signatures safely", () => {
   assert.equal(timingSafeHexEqual(sig, "0".repeat(64)), false);
 });
 
-test("buildSignedUnsubscribeUrl points to /unsubscribe", () => {
-  const url = buildSignedUnsubscribeUrl({
+test("buildSignedUnsubscribeUrl points to /unsubscribe", async () => {
+  const url = await buildSignedUnsubscribeUrl({
     baseUrl: "https://toyb.space",
     secret: "token-test-secret",
     email: "user@example.com",

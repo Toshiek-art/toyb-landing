@@ -37,11 +37,11 @@ export interface BuildSignedUnsubscribeUrlInput {
   ts?: number;
 }
 
-export function signUnsubscribeToken(input: SignUnsubscribeTokenInput): string;
+export function signUnsubscribeToken(input: SignUnsubscribeTokenInput): Promise<string>;
 export function timingSafeHexEqual(expectedHex: string, providedHex: string): boolean;
 export function verifyUnsubscribeToken(
   input: VerifyUnsubscribeTokenInput,
-): VerifyUnsubscribeTokenResult;
+): Promise<VerifyUnsubscribeTokenResult>;
 export function buildSignedUnsubscribeUrl(
   input: BuildSignedUnsubscribeUrlInput,
-): string;
+): Promise<string>;

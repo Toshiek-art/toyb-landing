@@ -53,7 +53,7 @@ export async function handleUnsubscribeRequest({
   const ip = cleanString(requestMeta.ip) || "unknown";
   const ipHash = await sha256Hex(`${ip}:${ipSalt}`);
 
-  const verified = verifyUnsubscribeToken({
+  const verified = await verifyUnsubscribeToken({
     secret: unsubscribeSecret,
     email: query.email,
     scope: query.scope,

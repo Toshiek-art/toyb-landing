@@ -219,7 +219,7 @@ export async function handleWaitlistSubmission({
     emailErrorCode = "misconfigured_email";
   } else {
     try {
-      const unsubscribeUrl = buildSignedUnsubscribeUrl({
+      const unsubscribeUrl = await buildSignedUnsubscribeUrl({
         baseUrl: unsubscribeBaseUrl,
         secret: unsubscribeSecret,
         email,

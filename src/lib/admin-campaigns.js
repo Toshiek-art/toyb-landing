@@ -160,7 +160,7 @@ export const sendCampaignBatch = async ({
 
       if (unsubscribeSecret && unsubscribeBaseUrl) {
         try {
-          const unsubscribeUrl = buildSignedUnsubscribeUrl({
+          const unsubscribeUrl = await buildSignedUnsubscribeUrl({
             baseUrl: unsubscribeBaseUrl,
             secret: unsubscribeSecret,
             email,

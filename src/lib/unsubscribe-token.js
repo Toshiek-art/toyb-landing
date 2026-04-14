@@ -1,7 +1,6 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 export const UNSUBSCRIBE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const ALLOWED_SCOPES = new Set(["all", "marketing"]);
+const textEncoder = new TextEncoder();
 
 const cleanString = (value) => (typeof value === "string" ? value.trim() : "");
 
@@ -24,7 +23,29 @@ const normalizeSecret = (value) => cleanString(value);
 
 const signaturePayload = (email, scope, ts) => `${email}|${scope}|${ts}`;
 
-export const signUnsubscribeToken = ({ secret, email, scope, ts }) => {
+const bytesToHex = (bytes) =>
+  [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+
+const importHmacKey = async (secret) =>
+  crypto.subtle.importKey(
+    "raw",
+    textEncoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+
+const hmacSha256Hex = async (secret, payload) => {
+  const key = await importHmacKey(secret);
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    textEncoder.encode(payload),
+  );
+  return bytesToHex(new Uint8Array(signature));
+};
+
+export const signUnsubscribeToken = async ({ secret, email, scope, ts }) => {
   const normalizedSecret = normalizeSecret(secret);
   const normalizedEmail = normalizeEmail(email);
   const normalizedScope = normalizeScope(scope);
@@ -34,14 +55,15 @@ export const signUnsubscribeToken = ({ secret, email, scope, ts }) => {
     throw new Error("invalid_unsubscribe_signature_input");
   }
 
-  return createHmac("sha256", normalizedSecret)
-    .update(signaturePayload(normalizedEmail, normalizedScope, parsedTs), "utf8")
-    .digest("hex");
+  return hmacSha256Hex(
+    normalizedSecret,
+    signaturePayload(normalizedEmail, normalizedScope, parsedTs),
+  );
 };
 
 const isHexSignature = (value) => /^[0-9a-f]{64}$/.test(value);
 
-// Security decision: always use timingSafeEqual for signature checks.
+// Security decision: use a constant-time comparison for signature checks.
 export const timingSafeHexEqual = (expectedHex, providedHex) => {
   const expected = cleanString(expectedHex).toLowerCase();
   const provided = cleanString(providedHex).toLowerCase();
@@ -50,17 +72,15 @@ export const timingSafeHexEqual = (expectedHex, providedHex) => {
     return false;
   }
 
-  const expectedBuffer = Buffer.from(expected, "hex");
-  const providedBuffer = Buffer.from(provided, "hex");
-
-  if (expectedBuffer.length !== providedBuffer.length) {
-    return false;
+  let diff = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    diff |= expected.charCodeAt(index) ^ provided.charCodeAt(index);
   }
 
-  return timingSafeEqual(expectedBuffer, providedBuffer);
+  return diff === 0;
 };
 
-export const verifyUnsubscribeToken = ({
+export const verifyUnsubscribeToken = async ({
   secret,
   email,
   scope,
@@ -89,7 +109,7 @@ export const verifyUnsubscribeToken = ({
 
   let expected;
   try {
-    expected = signUnsubscribeToken({
+    expected = await signUnsubscribeToken({
       secret: normalizedSecret,
       email: normalizedEmail,
       scope: normalizedScope,
@@ -111,7 +131,7 @@ export const verifyUnsubscribeToken = ({
   };
 };
 
-export const buildSignedUnsubscribeUrl = ({
+export const buildSignedUnsubscribeUrl = async ({
   baseUrl,
   secret,
   email,
@@ -125,7 +145,7 @@ export const buildSignedUnsubscribeUrl = ({
     throw new Error("invalid_unsubscribe_url_input");
   }
 
-  const signature = signUnsubscribeToken({
+  const signature = await signUnsubscribeToken({
     secret,
     email: normalizedEmail,
     scope: normalizedScope,

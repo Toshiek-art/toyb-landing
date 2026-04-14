@@ -1,5 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
-
 const cleanString = (value) => (typeof value === "string" ? value.trim() : "");
 const DEFAULT_ADMIN_ALLOWED_ORIGINS = [
   "https://toyb.space",
@@ -25,11 +23,14 @@ const parseBearerToken = (authorizationHeader) => {
 
 // Security decision: timing-safe token comparison avoids oracle leaks.
 const timingSafeStringEqual = (left, right) => {
-  const leftBuffer = Buffer.from(left, "utf8");
-  const rightBuffer = Buffer.from(right, "utf8");
+  if (left.length !== right.length) return false;
 
-  if (leftBuffer.length !== rightBuffer.length) return false;
-  return timingSafeEqual(leftBuffer, rightBuffer);
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+
+  return diff === 0;
 };
 
 const parseAllowedOrigins = (value) => {
